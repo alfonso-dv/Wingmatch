@@ -1,5 +1,6 @@
 # Wingmatch
 A dating website project from Team Brogrammers for WS2025 Software Engineering.
+
 Team Members:
   Coordinator: Alfonso Joaquin De Vera
   Lead Developers: Loretta Malinovic, Alexandra Monte
