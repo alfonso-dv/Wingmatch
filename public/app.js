@@ -1,0 +1,262 @@
+const seedProfiles = [
+    {
+        id: "p1",
+        name: "Mia",
+        age: 24,
+        distanceKm: 3,
+        bio: "Coffee first, adventure second.",
+        photos: [
+            "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1200&q=80",
+            "https://images.unsplash.com/photo-1524503033411-fb4b5f1c1854?auto=format&fit=crop&w=1200&q=80",
+        ],
+    },
+    {
+        id: "p2",
+        name: "Jonas",
+        age: 27,
+        distanceKm: 8,
+        bio: "Gym, books, and terrible jokes.",
+        photos: [
+            "https://images.unsplash.com/photo-1520975958225-647fd9f76a1a?auto=format&fit=crop&w=1200&q=80",
+            "https://images.unsplash.com/photo-1520975979642-5ec8f1b37214?auto=format&fit=crop&w=1200&q=80",
+        ],
+    },
+    {
+        id: "p3",
+        name: "Sofia",
+        age: 26,
+        distanceKm: 1,
+        bio: "Looking for someone to split dumplings with.",
+        photos: [
+            "https://images.unsplash.com/photo-1524502397800-2eeaad7c3fe5?auto=format&fit=crop&w=1200&q=80",
+            "https://images.unsplash.com/photo-1524503033411-fb4b5f1c1854?auto=format&fit=crop&w=1200&q=80",
+        ],
+    },
+];
+
+const ACTION = { NOPE: "NOPE", LIKE: "LIKE", SUPER: "SUPER LIKE" };
+
+let profiles = [...seedProfiles];
+
+const deck = document.getElementById("deck");
+const toast = document.getElementById("toast");
+const empty = document.getElementById("empty");
+const reloadBtn = document.getElementById("reload");
+
+const nopeBtn = document.getElementById("nope");
+const likeBtn = document.getElementById("like");
+const superBtn = document.getElementById("super");
+
+function showToast(text) {
+    toast.textContent = text;
+    toast.classList.remove("hidden");
+    clearTimeout(window.__toastT);
+    window.__toastT = setTimeout(() => toast.classList.add("hidden"), 900);
+}
+
+function setEmptyState(isEmpty) {
+    empty.classList.toggle("hidden", !isEmpty);
+}
+
+function topProfile() {
+    return profiles[0] || null;
+}
+
+function nextProfile() {
+    return profiles[1] || null;
+}
+
+function removeTop() {
+    profiles.shift();
+    render();
+}
+
+function render() {
+    deck.innerHTML = "";
+
+    const top = topProfile();
+    const next = nextProfile();
+
+    if (!top) {
+        setEmptyState(true);
+        nopeBtn.disabled = likeBtn.disabled = superBtn.disabled = true;
+        return;
+    }
+
+    setEmptyState(false);
+    nopeBtn.disabled = likeBtn.disabled = superBtn.disabled = false;
+
+    if (next) deck.appendChild(makeCard(next, false));
+    deck.appendChild(makeCard(top, true));
+}
+
+function makeCard(profile, isTop) {
+    let photoIndex = 0;
+
+    const card = document.createElement("div");
+    card.className = "card";
+    card.style.transform = isTop ? "scale(1)" : "scale(0.98)";
+    card.style.zIndex = isTop ? "2" : "1";
+
+    const img = document.createElement("img");
+    img.src = profile.photos[photoIndex];
+    img.alt = `${profile.name} photo`;
+    img.draggable = false;
+
+    const pills = document.createElement("div");
+    pills.className = "pills";
+    const pillEls = profile.photos.map((_, i) => {
+        const p = document.createElement("div");
+        p.className = "pill" + (i === photoIndex ? " active" : "");
+        pills.appendChild(p);
+        return p;
+    });
+
+    const badgeLike = document.createElement("div");
+    badgeLike.className = "badge like";
+    badgeLike.textContent = "LIKE";
+
+    const badgeNope = document.createElement("div");
+    badgeNope.className = "badge nope";
+    badgeNope.textContent = "NOPE";
+
+    const badgeSuper = document.createElement("div");
+    badgeSuper.className = "badge super";
+    badgeSuper.textContent = "SUPER LIKE";
+
+    const info = document.createElement("div");
+    info.className = "info";
+    info.innerHTML = `
+    <div class="row">
+      <div class="name">${profile.name} <span class="age">${profile.age}</span></div>
+      <div class="dist">${profile.distanceKm} km</div>
+    </div>
+    <div class="bio">${profile.bio}</div>
+    <div class="hint">Tap left/right for photos • Swipe to decide</div>
+  `;
+
+    card.appendChild(img);
+    card.appendChild(pills);
+    card.appendChild(badgeLike);
+    card.appendChild(badgeNope);
+    card.appendChild(badgeSuper);
+    card.appendChild(info);
+
+    // Tap left/right to change photo
+    card.addEventListener("click", (e) => {
+        if (!isTop) return;
+        const rect = card.getBoundingClientRect();
+        const tapX = e.clientX - rect.left;
+        const next = tapX > rect.width / 2;
+        const newIndex = Math.max(0, Math.min(profile.photos.length - 1, photoIndex + (next ? 1 : -1)));
+        if (newIndex !== photoIndex) {
+            photoIndex = newIndex;
+            img.src = profile.photos[photoIndex];
+            pillEls.forEach((p, i) => p.classList.toggle("active", i === photoIndex));
+        }
+    });
+
+    if (!isTop) return card;
+
+    // Swipe handling
+    let dragging = false;
+    let startX = 0;
+    let startY = 0;
+    let dx = 0;
+    let dy = 0;
+
+    function setBadges(dx, dy) {
+        // fade badges based on drag amount
+        badgeLike.style.opacity = dx > 20 ? Math.min(1, (dx - 20) / 120) : 0;
+        badgeNope.style.opacity = dx < -20 ? Math.min(1, (-dx - 20) / 120) : 0;
+        badgeSuper.style.opacity = dy < -20 ? Math.min(1, (-dy - 20) / 120) : 0;
+    }
+
+    function applyTransform(dx, dy) {
+        const rot = dx / 18; // small rotate
+        card.style.transform = `translate(${dx}px, ${dy}px) rotate(${rot}deg)`;
+        setBadges(dx, dy);
+    }
+
+    function decide(dx, dy) {
+        if (dx > 120) return ACTION.LIKE;
+        if (dx < -120) return ACTION.NOPE;
+        if (dy < -120) return ACTION.SUPER;
+        return null;
+    }
+
+    function animateOut(action) {
+        card.style.transition = "transform 240ms ease";
+        if (action === ACTION.LIKE) card.style.transform = "translate(520px, 40px) rotate(18deg)";
+        if (action === ACTION.NOPE) card.style.transform = "translate(-520px, 40px) rotate(-18deg)";
+        if (action === ACTION.SUPER) card.style.transform = "translate(0px, -620px) rotate(0deg)";
+        showToast(`${action} • ${profile.name}`);
+        setTimeout(removeTop, 180);
+    }
+
+    function reset() {
+        card.style.transition = "transform 180ms ease";
+        applyTransform(0, 0);
+        setTimeout(() => (card.style.transition = "transform 0ms"), 190);
+    }
+
+    card.addEventListener("pointerdown", (e) => {
+        dragging = true;
+        card.setPointerCapture(e.pointerId);
+        startX = e.clientX;
+        startY = e.clientY;
+        dx = dy = 0;
+        card.style.transition = "transform 0ms";
+    });
+
+    card.addEventListener("pointermove", (e) => {
+        if (!dragging) return;
+        dx = e.clientX - startX;
+        dy = e.clientY - startY;
+        applyTransform(dx, dy);
+    });
+
+    card.addEventListener("pointerup", () => {
+        if (!dragging) return;
+        dragging = false;
+        const action = decide(dx, dy);
+        if (action) animateOut(action);
+        else reset();
+    });
+
+    card.addEventListener("pointercancel", () => {
+        dragging = false;
+        reset();
+    });
+
+    return card;
+}
+
+// Buttons
+nopeBtn.addEventListener("click", () => {
+    const p = topProfile();
+    if (!p) return;
+    showToast(`${ACTION.NOPE} • ${p.name}`);
+    removeTop();
+});
+
+likeBtn.addEventListener("click", () => {
+    const p = topProfile();
+    if (!p) return;
+    showToast(`${ACTION.LIKE} • ${p.name}`);
+    removeTop();
+});
+
+superBtn.addEventListener("click", () => {
+    const p = topProfile();
+    if (!p) return;
+    showToast(`${ACTION.SUPER} • ${p.name}`);
+    removeTop();
+});
+
+reloadBtn.addEventListener("click", () => {
+    profiles = [...seedProfiles];
+    render();
+});
+
+render();

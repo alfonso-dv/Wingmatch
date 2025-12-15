@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wingmatch</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+<div class="app">
+    <header class="topbar">
+        <div class="brand">
+            <div class="logo">W</div>
+            <div class="title">Wingmatch</div>
+        </div>
+
+        <div class="top-actions">
+            <button class="icon-btn" title="Filters">⚙️</button>
+            <button class="icon-btn" title="Messages">💬</button>
+        </div>
+    </header>
+
+    <main class="stage">
+        <div id="deck" class="deck"></div>
+
+        <div id="empty" class="empty hidden">
+            <h2>You’re all caught up 🎉</h2>
+            <p>Reload demo profiles to keep swiping.</p>
+            <button id="reload" class="reload-btn">Reload</button>
+        </div>
+
+        <div id="toast" class="toast hidden"></div>
+    </main>
+
+    <footer class="actions">
+        <button id="nope" class="action-btn nope" aria-label="Nope">✖️</button>
+        <button id="super" class="action-btn super" aria-label="Super Like">⭐</button>
+        <button id="like" class="action-btn like" aria-label="Like">❤️</button>
+    </footer>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
