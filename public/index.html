@@ -1,3 +1,4 @@
+<!-- index.html: -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -16,7 +17,13 @@
         </div>
 
         <div class="top-actions">
-            <button class="icon-btn" title="Filters">⚙️</button>
+            <!-- Date Roulette Button -->
+            <button id="rouletteBtn" class="icon-btn" title="Date Roulette">🎲</button>
+
+            <!-- Settings -->
+            <button id="settingsBtn" class="icon-btn" title="Settings">⚙️</button>
+
+            <!-- Messages -->
             <button class="icon-btn" title="Messages">💬</button>
         </div>
     </header>
@@ -38,6 +45,48 @@
         <button id="super" class="action-btn super" aria-label="Super Like">⭐</button>
         <button id="like" class="action-btn like" aria-label="Like">❤️</button>
     </footer>
+</div>
+<!-- Date Roulette Modal -->
+<div id="rouletteModal" class="modal hidden">
+    <div class="modal-card">
+        <!-- Schließen (X) -->
+        <button id="closeRouletteX" class="close-x">✕</button>
+        <h2>Date Roulette</h2>
+
+        <p>What are you in the mood for?</p>
+
+        <button class="roulette-option" id="dateIdeasBtn">
+            Date Ideas
+        </button>
+
+        <button class="roulette-option" id="foodDiningBtn">
+            Food & Dining
+        </button>
+
+        <button id="closeRoulette" class="close-btn">Close</button>
+    </div>
+</div>
+<!-- Roulette Spin Modal -->
+<div id="spinModal" class="modal hidden">
+    <div class="modal-card roulette-spin">
+
+        <!-- Schließen -->
+        <button id="backToChoice" class="back-arrow">←</button>
+        <button id="closeSpin" class="close-x">✕</button>
+
+        <h2 id="spinTitle">Roulette</h2>
+
+
+        <!-- Anzeige -->
+        <div id="spinResult" class="spin-result">
+            Tap Spin
+        </div>
+
+        <!-- Drehen -->
+        <button id="spinBtn" class="spin-btn">
+            Spin
+        </button>
+    </div>
 </div>
 
 <script src="app.js"></script>

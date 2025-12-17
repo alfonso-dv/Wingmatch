@@ -1,3 +1,4 @@
+/* style.css: */
 :root {
     --bg: #f4f4f6;
     --cardRadius: 28px;
@@ -203,3 +204,137 @@ body {
 }
 
 .hidden { display: none; }
+
+
+/* ================================
+   Roulette Modal
+================================ */
+.modal {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: grid;
+    place-items: center;
+    z-index: 10;
+}
+
+/* ================================
+   Modal Box (größer)
+================================ */
+.modal-card {
+    position: relative;
+    background: white;
+    border-radius: 28px;
+    padding: 56px;
+    width: 92%;
+    max-width: 600px;
+    text-align: center;
+    box-shadow: var(--shadow);
+}
+
+/* ================================
+   Titel (ALLE gleich groß)
+================================ */
+.modal-card h2 {
+    font-size: 36px;
+    font-weight: 900;
+    margin-bottom: 24px;
+}
+
+/* ================================
+   Normaler Text (What are you...)
+================================ */
+.modal-card p {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 28px;
+}
+
+/* ================================
+   Auswahl Buttons (Date / Food)
+================================ */
+.roulette-option {
+    width: 100%;
+    margin-top: 18px;
+    padding: 22px;
+    border-radius: 20px;
+    border: 1px solid rgba(0,0,0,0.15);
+    background: #fff;
+    font-size: 22px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+/* ================================
+   Close Text Button (unten)
+================================ */
+.close-btn {
+    margin-top: 28px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+/* ================================
+   Modal verstecken
+================================ */
+.modal.hidden {
+    display: none;
+}
+
+/* ================================
+   X oben rechts (größer)
+================================ */
+.close-x {
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    background: none;
+    border: none;
+    font-size: 26px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+/* ================================
+   Zurück Pfeil (größer)
+================================ */
+.back-arrow {
+    position: absolute;
+    top: 18px;
+    left: 22px;
+    background: none;
+    border: none;
+    font-size: 26px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+/* ================================
+   Ergebnis Anzeige (Tap Spin / Ergebnis)
+================================ */
+.spin-result {
+    margin: 32px 0;
+    padding: 30px;
+    border-radius: 22px;
+    background: rgba(0,0,0,0.06);
+    font-size: 28px;
+    font-weight: 900;
+}
+
+/* ================================
+   Spin Button (groß & klar)
+================================ */
+.spin-btn {
+    width: 100%;
+    padding: 26px;
+    border-radius: 22px;
+    border: none;
+    background: #000;
+    color: #fff;
+    font-weight: 900;
+    font-size: 22px;
+    cursor: pointer;
+}

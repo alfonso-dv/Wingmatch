@@ -1,3 +1,4 @@
+// app.js:
 const seedProfiles = [
     {
         id: "p1",
@@ -260,3 +261,118 @@ reloadBtn.addEventListener("click", () => {
 });
 
 render();
+
+// Date Roulette Modal öffnen / schließen
+const rouletteBtn = document.getElementById("rouletteBtn");
+const rouletteModal = document.getElementById("rouletteModal");
+const closeRoulette = document.getElementById("closeRoulette");
+
+// Sicherheitscheck: nur wenn Elemente existieren
+if (rouletteBtn && rouletteModal && closeRoulette) {
+
+    // Öffnen beim Klick auf 🎲
+    rouletteBtn.addEventListener("click", () => {
+        rouletteModal.classList.remove("hidden");
+    });
+
+    // Schließen beim Klick auf Close
+    closeRoulette.addEventListener("click", () => {
+        rouletteModal.classList.add("hidden");
+    });
+}
+// ----------------------
+// Roulette Daten (laut Doku)
+// ----------------------
+const dateIdeas = [
+    "Park Walk",
+    "Cinema",
+    "Cooking Together",
+    "Coffee Date",
+    "Museum Visit",
+    "Picnic",
+    "Bowling",
+    "Ice Cream Date",
+    "Sunset Walk",
+    "Mini Golf",
+    "Zoo Visit",
+    "Street Market",
+    "Board Game Night",
+    "Hiking",
+    "Photography Walk"
+];
+
+
+const foodDining = [
+    "Italian",
+    "Asian",
+    "Mexican",
+    "Street Food",
+    "Vegetarian",
+    "Japanese",
+    "Thai",
+    "Indian",
+    "Greek",
+    "Burger",
+    "Pizza",
+    "Sushi",
+    "Vegan",
+    "Middle Eastern",
+    "Local Cuisine"
+];
+
+
+// Elemente
+const dateIdeasBtn = document.getElementById("dateIdeasBtn");
+const foodDiningBtn = document.getElementById("foodDiningBtn");
+const spinModal = document.getElementById("spinModal");
+const spinTitle = document.getElementById("spinTitle");
+const spinResult = document.getElementById("spinResult");
+const spinBtn = document.getElementById("spinBtn");
+const closeSpin = document.getElementById("closeSpin");
+const closeRouletteX = document.getElementById("closeRouletteX");
+
+
+let currentList = [];
+
+// Öffnen Date Ideas
+dateIdeasBtn.addEventListener("click", () => {
+    currentList = dateIdeas;
+    spinTitle.textContent = "Date Ideas Roulette";
+    spinResult.textContent = "Tap Spin";
+    rouletteModal.classList.add("hidden");
+    spinModal.classList.remove("hidden");
+});
+
+// Öffnen Food
+foodDiningBtn.addEventListener("click", () => {
+    currentList = foodDining;
+    spinTitle.textContent = "Food & Dining Roulette";
+    spinResult.textContent = "Tap Spin";
+    rouletteModal.classList.add("hidden");
+    spinModal.classList.remove("hidden");
+});
+
+// Drehen
+spinBtn.addEventListener("click", () => {
+    const choice = currentList[Math.floor(Math.random() * currentList.length)];
+    spinResult.textContent = choice;
+});
+
+// Schließen X
+closeSpin.addEventListener("click", () => {
+    spinModal.classList.add("hidden");
+    rouletteModal.classList.add("hidden");
+});
+
+
+// Element holen:
+const backToChoice = document.getElementById("backToChoice");
+
+// Zurück zur Auswahl (Date / Food)
+backToChoice.addEventListener("click", () => {
+    spinModal.classList.add("hidden");
+    rouletteModal.classList.remove("hidden");
+});
+closeRouletteX.addEventListener("click", () => {
+    rouletteModal.classList.add("hidden");
+});
