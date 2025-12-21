@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Register – Wingmatch</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #ffdde1, #ee9ca7);
+            height: 100vh;
+        }
+        .card {
+            border-radius: 20px;
+        }
+        .brand {
+            font-weight: 700;
+            font-size: 24px;
+            color: #ff4d6d;
+        }
+        .btn-primary {
+            background-color: #ff4d6d;
+            border: none;
+        }
+        .btn-primary:hover {
+            background-color: #e63b5c;
+        }
+    </style>
+</head>
+<body class="d-flex justify-content-center align-items-center">
+
+<div class="card shadow p-4" style="width: 380px;">
+    <div class="text-center mb-3">
+        <div class="brand">Wingmatch</div>
+        <h4>Create Account</h4>
+
+    </div>
+
+    <div class="mb-2">
+        <input id="name" class="form-control" placeholder="Name">
+    </div>
+
+    <div class="mb-2">
+        <input id="age" type="number" min="18" class="form-control" placeholder="Age">
+    </div>
+
+    <div class="mb-2">
+        <select id="gender" class="form-select">
+            <option value="placeholder" selected disabled>Choose gender</option>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+            <option value="diverse">Diverse</option>
+        </select>
+    </div>
+
+    <div class="mb-2">
+        <input id="location" class="form-control" list="locations" placeholder="Location">
+
+        <datalist id="locations">
+            <option value="Vienna">
+            <option value="Wiener Neustadt">
+            <option value="Wiener Neudorf">
+            <option value="St. Pölten">
+            <option value="Graz">
+            <option value="Linz">
+        </datalist>
+
+    </div>
+
+    <div class="mb-2">
+        <input id="email" type="email" class="form-control" placeholder="Email">
+    </div>
+
+    <div class="mb-3">
+        <input id="password" type="password" class="form-control" placeholder="Password">
+    </div>
+
+    <div class="d-grid mb-2">
+        <button
+                id="registerBtn"
+                type="button"
+                class="btn btn-danger w-100">
+            Register
+        </button>
+
+    </div>
+    <div id="errorMsg" class="text-center text-danger small mb-2"></div>
+
+    <div class="text-center">
+        <a href="/login" class="text-decoration-none">Back to Login</a>
+    </div>
+</div>
+
+<script src="/js/register.js"></script>
+</body>
+</html>

@@ -4,11 +4,21 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy"
+          content="
+        default-src 'self';
+        img-src 'self' https://images.unsplash.com data:;
+        style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+        script-src 'self';
+      ">
+
     <title>Wingmatch</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="/css/styles.css" />
 </head>
 
 <body>
+
+
 <div class="app">
     <header class="topbar">
         <div class="brand">
@@ -25,8 +35,12 @@
 
             <!-- Messages -->
             <button class="icon-btn" title="Messages">💬</button>
+            <button id="logoutBtn" class="icon-btn logout" title="Logout">Logout</button>
+
         </div>
     </header>
+    <!-- Logout Modal -->
+
 
     <main class="stage">
         <div id="deck" class="deck"></div>
@@ -87,8 +101,12 @@
             Spin
         </button>
     </div>
+
 </div>
 
-<script src="app.js"></script>
+
+
+<script src="/js/app.js"></script>
+
 </body>
 </html>

@@ -1,60 +1,172 @@
-//server.js:
-const http = require("http");
-const fs = require("fs");
+console.log("DB PATH:", require("path").resolve("./database.db"));
+
+const express = require("express");
+const session = require("express-session");
+const bcrypt = require("bcrypt");
+const sqlite3 = require("sqlite3").verbose();
 const path = require("path");
 
+const app = express();
 const PORT = 8080;
 
-const MIME = {
-    ".html": "text/html; charset=utf-8",
-    ".css": "text/css; charset=utf-8",
-    ".js": "text/javascript; charset=utf-8",
-    ".json": "application/json; charset=utf-8",
-    ".png": "image/png",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".svg": "image/svg+xml",
-};
+/* ================= DATABASE ================= */
+const db = new sqlite3.Database(
+    path.join(__dirname, "database.db")
+);
 
-function send(res, status, contentType, body) {
-    res.writeHead(status, { "Content-Type": contentType });
-    res.end(body);
-}
+db.run(`
+    CREATE TABLE IF NOT EXISTS users (
+                                         id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                         email TEXT UNIQUE,
+                                         password TEXT,
+                                         name TEXT,
+                                         age INTEGER,
+                                         gender TEXT,
+                                         location TEXT
+    )
+`);
 
-function serveStatic(req, res) {
-    const urlPath = req.url === "/" ? "/index.html" : req.url;
+/* ================= MIDDLEWARE ================= */
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-    // basic safety: prevent path traversal
-    const safePath = path.normalize(urlPath).replace(/^(\.\.[/\\])+/, "");
-    const filePath = path.join(__dirname, "public", safePath);
+app.use(
+    session({
+        secret: "wingmatch-secret",
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+            maxAge: 1000 * 60 * 60 // 1 Stunde
+        }
+    })
+);
 
-    fs.readFile(filePath, (err, data) => {
-        if (err) return false;
+/* ================= STATIC ASSETS ================= */
+app.use("/css", express.static(path.join(__dirname, "public/css")));
+app.use("/js", express.static(path.join(__dirname, "public/js")));
+app.use("/images", express.static(path.join(__dirname, "public/images")));
 
-        const ext = path.extname(filePath).toLowerCase();
-        const type = MIME[ext] || "application/octet-stream";
-        send(res, 200, type, data);
-        return true;
-    });
-
-    return true;
-}
-
-const server = http.createServer((req, res) => {
-    // Serve frontend files
-    // (If you later want APIs, add routes BEFORE this call.)
-    serveStatic(req, res);
-
-    // Note: For a missing file, we return a simple 404
-    // (We do it async-safe by checking existence quickly)
-    const urlPath = req.url === "/" ? "/index.html" : req.url;
-    const safePath = path.normalize(urlPath).replace(/^(\.\.[/\\])+/, "");
-    const filePath = path.join(__dirname, "public", safePath);
-    if (!fs.existsSync(filePath)) {
-        send(res, 404, "text/plain; charset=utf-8", "404 Not Found");
-    }
+/* ================= DEBUG (optional) ================= */
+app.get("/debug-session", (req, res) => {
+    res.json(req.session);
 });
 
-server.listen(PORT, () => {
-    console.log(`Website running on http://localhost:${PORT}`);
+/* ================= AUTH GUARD ================= */
+function requireLogin(req, res, next) {
+    if (!req.session.userId) {
+        return res.redirect("/login");
+    }
+    next();
+}
+
+/* ================= PUBLIC ROUTES ================= */
+app.get("/", (req, res) => {
+    res.redirect("/login");
+});
+
+app.get("/login", (req, res) => {
+    if (req.session.userId) {
+        return res.redirect("/index");
+    }
+    res.sendFile(path.join(__dirname, "public/login.html"));
+});
+
+app.get("/register", (req, res) => {
+    if (req.session.userId) {
+        return res.redirect("/index");
+    }
+    res.sendFile(path.join(__dirname, "public/register.html"));
+});
+
+/* ================= PROTECTED ROUTES ================= */
+app.get("/index", requireLogin, (req, res) => {
+    res.sendFile(path.join(__dirname, "protected/index.html"));
+});
+
+/* ================= BLOCK HTML DIRECT ACCESS ================= */
+app.get("/*.html", (req, res) => {
+    res.status(403).send("Access denied");
+});
+
+/* ================= AUTH API ================= */
+
+// REGISTER
+app.post("/api/register", async (req, res) => {
+    console.log("REGISTER BODY:", req.body);
+
+    const { email, password, name, age, gender, location } = req.body;
+
+    if (!email || !password || !name || !age || !gender || !location) {
+        return res.status(400).json({ message: "Missing fields" });
+    }
+
+    if (age < 18) {
+        return res.status(400).json({ message: "User must be at least 18" });
+    }
+
+    if (/\d/.test(name)) {
+        return res.status(400).json({ message: "Invalid name format" });
+    }
+
+    if (gender === "placeholder") {
+        return res.status(400).json({ message: "Please select a gender" });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+
+    db.run(
+        `INSERT INTO users (email, password, name, age, gender, location)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [email, hash, name, age, gender, location],
+        function (err) {
+            if (err) {
+                console.error("DB ERROR:", err.message);
+                if (err.message.includes("UNIQUE")) {
+                    return res.status(400).json({ message: "User already exists" });
+                }
+                return res.status(400).json({ message: "Registration failed" });
+            }
+
+            // 🔐 Auto-Login nach Registrierung
+            req.session.userId = this.lastID;
+
+            res.json({ message: "Registration successful" });
+        }
+    );
+});
+
+// LOGIN
+app.post("/api/login", (req, res) => {
+    const { email, password } = req.body;
+
+    db.get(
+        "SELECT * FROM users WHERE email = ?",
+        [email],
+        async (err, user) => {
+            if (!user) {
+                return res.status(401).json({ message: "Invalid credentials" });
+            }
+
+            const ok = await bcrypt.compare(password, user.password);
+            if (!ok) {
+                return res.status(401).json({ message: "Invalid credentials" });
+            }
+
+            req.session.userId = user.id;
+            res.json({ message: "Login successful" });
+        }
+    );
+});
+
+// LOGOUT
+app.post("/api/logout", (req, res) => {
+    req.session.destroy(() => {
+        res.clearCookie("connect.sid");
+        res.json({ message: "Logged out" });
+    });
+});
+
+/* ================= START ================= */
+app.listen(PORT, () => {
+    console.log(`✅ Server running at http://localhost:${PORT}`);
 });

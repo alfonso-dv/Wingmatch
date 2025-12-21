@@ -338,3 +338,22 @@ body {
     font-size: 22px;
     cursor: pointer;
 }
+.error-text {
+    color: #d32f2f;        /* rot */
+    font-weight: 700;      /* BOLD */
+    text-align: center;
+    margin-bottom: 12px;
+}
+
+#errorMsg {
+    font-weight: bold;
+}
+.icon-btn.logout {
+    margin-left: 8px;
+    color: #ff5a5f;
+}
+
+.icon-btn.logout:hover {
+    background: rgba(255, 90, 95, 0.15);
+}
+
