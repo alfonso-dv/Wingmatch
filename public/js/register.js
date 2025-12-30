@@ -1,3 +1,4 @@
+//register.js:
 document.getElementById("registerBtn").onclick = async () => {
     const name = document.getElementById("name").value.trim();
     const ageValue = document.getElementById("age").value;
@@ -71,5 +72,10 @@ document.getElementById("registerBtn").onclick = async () => {
     }
 
     // ✅ ERFOLG
-    window.location.href = "/index";
+    if (data.needsProfile) {
+        window.location.href = "/create-profile";
+    } else {
+        window.location.href = "/index";
+    }
+
 };

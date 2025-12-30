@@ -386,3 +386,12 @@ if (logoutBtn) {
     });
 }
 
+// PROFILE BUTTON (Homepage)
+const profileBtn = document.getElementById("profileBtn");
+if (profileBtn) {
+  profileBtn.addEventListener("click", () => {
+    window.location.href = "/create-profile?mode=edit";
+  });
+}
+
+

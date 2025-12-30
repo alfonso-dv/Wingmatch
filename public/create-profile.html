@@ -1,48 +1,121 @@
+<!-- public/create-profile.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Create Profile – Wingmatch</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
 
-<div class="profile-container">
-    <h1>Create your profile</h1>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- dein Stylesheet (bleibt drin) -->
+    <link rel="stylesheet" href="/css/styles.css">
+
+    <!-- NUR für diese Seite: überschreibt dein styles.css (damit alles weiß + klickbar ist) -->
+    <style>
+        body.create-profile-page {
+          min-height: 100vh;
+          background: linear-gradient(135deg, #ffdde1, #ee9ca7);
+        }
+
+        /* erzwingt weißes Card-Design (dein styles.css macht es sonst dunkel) */
+        .wm-card {
+          background: #ffffff !important;
+          color: #111 !important;
+          border-radius: 20px !important;
+          position: relative;
+          z-index: 5;
+        }
+
+
+        /* Inputs immer sichtbar + klickbar */
+        .wm-card input,
+        .wm-card select,
+        .wm-card textarea,
+        .wm-card button {
+          pointer-events: auto !important;
+          user-select: auto !important;
+        }
+
+
+        /* Skip oben rechts */
+        #skipBtn {
+          top: 10px;
+          right: 14px;
+          text-decoration: none;
+          font-weight: 700;
+          color: #ff4d6d;
+        }
+    </style>
+</head>
+
+<body class="create-profile-page d-flex justify-content-center align-items-center">
+
+<div class="wm-card shadow p-4 position-relative" style="width: 420px;">
+
+
+    <!-- Skip Button -->
+    <button id="skipBtn" type="button" class="btn btn-link position-absolute">
+        Skip
+    </button>
+
+    <!-- Close Button (nur im Edit-Mode) -->
+    <button id="closeBtn" type="button" class="btn btn-link position-absolute d-none"
+            style="top: 10px; right: 14px; text-decoration: none; font-weight: 800; color: #ff4d6d;">
+        ✕
+    </button>
+
+
+    <div class="text-center mb-3">
+        <div style="font-weight: 800; font-size: 24px; color: #ff4d6d;">Wingmatch</div>
+        <h4>Create Profile</h4>
+        <p id="hintText" class="text-muted small mb-0">You can skip and edit later.</p>
+    </div>
 
     <form id="profileForm">
-        <label>
-            Name
-            <input type="text" id="name" required>
-        </label>
+        <!-- REQUIRED -->
+        <div class="mb-2">
+            <input id="name" type="text" class="form-control" placeholder="Name" required>
+        </div>
 
-        <label>
-            Age
-            <input type="number" id="age" min="18" required>
-        </label>
+        <div class="mb-2">
+            <input id="age" type="number" min="18" class="form-control" placeholder="Age" required>
+        </div>
 
-        <label>
-            Gender
-            <select id="gender" required>
-                <option value="">Select</option>
+        <div class="mb-2">
+            <select id="gender" class="form-select" required>
+                <option value="" selected disabled>Select gender</option>
                 <option>Female</option>
                 <option>Male</option>
                 <option>Non-binary</option>
                 <option>Other</option>
             </select>
-        </label>
+        </div>
 
-        <label>
-            Location
-            <input type="text" id="location" required>
-        </label>
+        <div class="mb-3">
+            <input id="location" type="text" class="form-control" placeholder="Location" required>
+        </div>
 
-        <button type="submit">Create Profile</button>
+        <!-- OPTIONAL -->
+        <div class="mb-2">
+            <textarea id="bio" class="form-control" rows="3" placeholder="About me (optional)"></textarea>
+        </div>
+
+        <div class="mb-3">
+            <input id="hobbies" type="text" class="form-control"
+                   placeholder="Hobbies (optional, e.g. hiking, sushi, techno)">
+        </div>
+
+        <div class="d-grid mb-2">
+            <button type="submit" class="btn btn-danger w-100" style="border-radius: 12px;">
+                Save & Continue
+            </button>
+        </div>
+
+        <div id="result" class="text-center small fw-bold"></div>
     </form>
-
-    <p id="result"></p>
 </div>
 
-<script src="create-profile.js"></script>
+<script src="/js/create-profile.js"></script>
 </body>
 </html>

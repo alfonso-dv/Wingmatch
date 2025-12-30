@@ -1,3 +1,4 @@
+/* server.js: */
 console.log("DB PATH:", require("path").resolve("./database.db"));
 
 const express = require("express");
@@ -25,6 +26,26 @@ db.run(`
                                          location TEXT
     )
 `);
+
+db.run(`
+    CREATE TABLE IF NOT EXISTS profiles (
+                                           user_id INTEGER PRIMARY KEY,
+                                           bio TEXT DEFAULT '',
+                                           prompts TEXT DEFAULT '[]',
+                                           photos TEXT DEFAULT '[]',
+                                           created_at TEXT DEFAULT (datetime('now')),
+                                           updated_at TEXT DEFAULT (datetime('now')),
+                                           FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+`);
+// Nachrüsten für bestehende DB: hobbies-Spalte hinzufügen (wenn schon vorhanden, ignorieren)
+db.run(`ALTER TABLE profiles ADD COLUMN hobbies TEXT DEFAULT ''`, (err) => {
+    if (err && !err.message.includes("duplicate column")) {
+        console.error("ALTER TABLE ERROR:", err.message);
+    }
+});
+
+
 
 /* ================= MIDDLEWARE ================= */
 app.use(express.json());
@@ -80,13 +101,36 @@ app.get("/register", (req, res) => {
 
 /* ================= PROTECTED ROUTES ================= */
 app.get("/index", requireLogin, (req, res) => {
-    res.sendFile(path.join(__dirname, "protected/index.html"));
+    db.get(
+        "SELECT user_id FROM profiles WHERE user_id = ?",
+        [req.session.userId],
+        (err, row) => {
+            if (err) {
+                console.error("DB ERROR:", err.message);
+                return res.status(500).send("DB error");
+            }
+
+            // Wenn Profil noch nicht existiert → zuerst Profil erstellen
+            if (!row) {
+                return res.redirect("/create-profile");
+            }
+
+            res.sendFile(path.join(__dirname, "protected/index.html"));
+        }
+    );
 });
 
+app.get("/create-profile", requireLogin, (req, res) => {
+    res.sendFile(path.join(__dirname, "public/create-profile.html"));
+});
+
+
 /* ================= BLOCK HTML DIRECT ACCESS ================= */
-app.get("/*.html", (req, res) => {
+// neu – statt "/*.html" eine Regex verwenden, damit Express 5 keinen Fehler wirft
+app.get(/.*\.html$/, (req, res) => {
     res.status(403).send("Access denied");
 });
+
 
 /* ================= AUTH API ================= */
 
@@ -128,9 +172,112 @@ app.post("/api/register", async (req, res) => {
             }
 
             // 🔐 Auto-Login nach Registrierung
-            req.session.userId = this.lastID;
+             req.session.userId = this.lastID;
 
-            res.json({ message: "Registration successful" });
+             // Profil ist nach Register noch nicht angelegt → als nächstes Profil-Seite
+             res.json({ message: "Registration successful", needsProfile: true });
+
+        }
+    );
+});
+
+/* ================= PROFILE API ================= */
+
+// CREATE/UPSERT PROFILE (wird von create-profile.js genutzt)
+// SKIP: erstellt nur den profiles-Eintrag, damit /index nicht mehr zurück umleitet
+app.post("/api/profile/skip", requireLogin, (req, res) => {
+    const userId = req.session.userId;
+
+    db.run(
+        `INSERT INTO profiles (user_id)
+         VALUES (?)
+         ON CONFLICT(user_id) DO NOTHING`,
+        [userId],
+        (err) => {
+            if (err) {
+                console.error("DB ERROR:", err.message);
+                return res.status(500).json({ message: "DB error" });
+            }
+
+            return res.json({ message: "Skipped" });
+        }
+    );
+});
+
+// GET PROFILE (für Prefill in create-profile.js)
+app.get("/api/profile", requireLogin, (req, res) => {
+    const userId = req.session.userId;
+
+    db.get(
+        `SELECT
+            u.name, u.age, u.gender, u.location,
+            p.bio, p.hobbies
+         FROM users u
+         LEFT JOIN profiles p ON p.user_id = u.id
+         WHERE u.id = ?`,
+        [userId],
+        (err, row) => {
+            if (err) {
+                console.error("DB ERROR:", err.message);
+                return res.status(500).json({ message: "DB error" });
+            }
+
+            return res.json({
+                name: row?.name ?? "",
+                age: row?.age ?? "",
+                gender: row?.gender ?? "",
+                location: row?.location ?? "",
+                bio: row?.bio ?? "",
+                hobbies: row?.hobbies ?? ""
+            });
+        }
+    );
+});
+
+
+// CREATE/UPSERT PROFILE (wird von create-profile.js genutzt)
+app.post("/api/profile", requireLogin, (req, res) => {
+    const { name, age, gender, location, bio = "", hobbies = "" } = req.body;
+    const userId = req.session.userId;
+
+    if (!name || !age || !gender || !location) {
+        return res.status(400).json({ message: "Missing fields" });
+    }
+
+    if (Number(age) < 18) {
+        return res.status(400).json({ message: "User must be at least 18" });
+    }
+
+    // 1) Basisdaten im users-Table updaten (damit Login immer alles hat)
+    db.run(
+        `UPDATE users
+         SET name = ?, age = ?, gender = ?, location = ?
+         WHERE id = ?`,
+        [name, Number(age), gender, location, userId],
+        (err) => {
+            if (err) {
+                console.error("DB ERROR:", err.message);
+                return res.status(500).json({ message: "DB error" });
+            }
+
+            // 2) profiles-Eintrag anlegen/aktualisieren
+            db.run(
+                `INSERT INTO profiles (user_id, bio, hobbies)
+                 VALUES (?, ?, ?)
+                 ON CONFLICT(user_id) DO UPDATE SET
+                   bio = excluded.bio,
+                   hobbies = excluded.hobbies,
+                   updated_at = datetime('now')`,
+                [userId, bio, hobbies],
+                (err2) => {
+                    if (err2) {
+                        console.error("DB ERROR:", err2.message);
+                        return res.status(500).json({ message: "DB error" });
+                    }
+
+                    return res.json({ message: "✅ Profile saved!" });
+                }
+            );
         }
     );
 });
@@ -153,7 +300,21 @@ app.post("/api/login", (req, res) => {
             }
 
             req.session.userId = user.id;
-            res.json({ message: "Login successful" });
+
+            db.get(
+                "SELECT user_id FROM profiles WHERE user_id = ?",
+                [user.id],
+                (err2, row) => {
+                    if (err2) {
+                        console.error("DB ERROR:", err2.message);
+                        return res.status(500).json({ message: "DB error" });
+                    }
+
+                    const needsProfile = !row;
+                    res.json({ message: "Login successful", needsProfile });
+                }
+            );
+
         }
     );
 });
@@ -165,6 +326,7 @@ app.post("/api/logout", (req, res) => {
         res.json({ message: "Logged out" });
     });
 });
+
 
 /* ================= START ================= */
 app.listen(PORT, () => {

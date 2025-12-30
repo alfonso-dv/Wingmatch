@@ -1,3 +1,4 @@
+//login.js:
 document.getElementById("loginBtn").onclick = async () => {
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value.trim();
@@ -37,6 +38,11 @@ document.getElementById("loginBtn").onclick = async () => {
     msg.textContent = "Login successful!";
 
     setTimeout(() => {
-        window.location.href = "/index";
+        if (data.needsProfile) {
+            window.location.href = "/create-profile";
+        } else {
+            window.location.href = "/index";
+        }
     }, 700);
+
 };
