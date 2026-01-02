@@ -6,9 +6,40 @@ const session = require("express-session");
 const bcrypt = require("bcrypt");
 const sqlite3 = require("sqlite3").verbose();
 const path = require("path");
+const fs = require("fs");
+const multer = require("multer");
+
 
 const app = express();
 const PORT = 8080;
+
+/* ================= UPLOAD SETUP (Pflichtfoto) ================= */
+const UPLOAD_DIR = path.join(__dirname, "uploads");
+
+// falls Ordner nicht existiert -> anlegen
+if (!fs.existsSync(UPLOAD_DIR)) {
+  fs.mkdirSync(UPLOAD_DIR);
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+  filename: (req, file, cb) => {
+    // eindeutig: userId + timestamp + ext
+    const ext = path.extname(file.originalname || "");
+    cb(null, `user_${req.session.userId}_${Date.now()}${ext}`);
+  }
+});
+
+function fileFilter(req, file, cb) {
+  // nur Bilder erlauben
+  if (!file.mimetype.startsWith("image/")) {
+    return cb(new Error("Only images allowed"));
+  }
+  cb(null, true);
+}
+
+const upload = multer({ storage, fileFilter });
+
 
 /* ================= DATABASE ================= */
 const db = new sqlite3.Database(
@@ -67,6 +98,10 @@ app.use("/css", express.static(path.join(__dirname, "public/css")));
 app.use("/js", express.static(path.join(__dirname, "public/js")));
 app.use("/images", express.static(path.join(__dirname, "public/images")));
 
+// Profilbilder aus /uploads ausliefern (damit Browser sie anzeigen kann)
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+
 /* ================= DEBUG (optional) ================= */
 app.get("/debug-session", (req, res) => {
     res.json(req.session);
@@ -101,29 +136,46 @@ app.get("/register", (req, res) => {
 
 /* ================= PROTECTED ROUTES ================= */
 app.get("/index", requireLogin, (req, res) => {
-    db.get(
-        "SELECT user_id FROM profiles WHERE user_id = ?",
-        [req.session.userId],
-        (err, row) => {
-            if (err) {
-                console.error("DB ERROR:", err.message);
-                return res.status(500).send("DB error");
-            }
+  const userId = req.session.userId;
 
-            // Wenn Profil noch nicht existiert → zuerst Profil erstellen
-            if (!row) {
-                return res.redirect("/create-profile");
-            }
+  db.get(
+    "SELECT user_id, photos FROM profiles WHERE user_id = ?",
+    [userId],
+    (err, row) => {
+      if (err) {
+        console.error("DB ERROR:", err.message);
+        return res.status(500).send("DB error");
+      }
 
-            res.sendFile(path.join(__dirname, "protected/index.html"));
-        }
-    );
+      // 1) Profil existiert noch nicht -> zuerst Profil erstellen
+      if (!row) return res.redirect("/create-profile");
+
+      // 2) Pflichtfoto prüfen
+      let photos = [];
+      try { photos = JSON.parse(row.photos || "[]"); } catch { photos = []; }
+
+      if (!photos[0]) return res.redirect("/upload-photo");
+
+      // 3) Alles ok -> Homepage
+      return res.sendFile(path.join(__dirname, "protected/index.html"));
+    }
+  );
 });
+
 
 app.get("/create-profile", requireLogin, (req, res) => {
     res.sendFile(path.join(__dirname, "public/create-profile.html"));
 });
 
+// Pflichtfoto-Seite
+app.get("/upload-photo", requireLogin, (req, res) => {
+  res.sendFile(path.join(__dirname, "public/upload-photo.html"));
+});
+
+// My Pictures Seite (nur von Edit-Mode aus erreichbar)
+app.get("/manage-pictures", requireLogin, (req, res) => {
+  res.sendFile(path.join(__dirname, "public/manage-pictures.html"));
+});
 
 /* ================= BLOCK HTML DIRECT ACCESS ================= */
 // neu – statt "/*.html" eine Regex verwenden, damit Express 5 keinen Fehler wirft
@@ -325,6 +377,147 @@ app.post("/api/logout", (req, res) => {
         res.clearCookie("connect.sid");
         res.json({ message: "Logged out" });
     });
+});
+
+/* ================= PHOTO API (Pflichtfoto) ================= */
+
+// Foto hochladen/ersetzen -> wird als profiles.photos[0] gespeichert
+app.post("/api/photos/main", requireLogin, upload.single("photo"), (req, res) => {
+  const userId = req.session.userId;
+
+  if (!req.file) {
+    return res.status(400).json({ message: "No file uploaded" });
+  }
+
+  const fileUrl = `/uploads/${req.file.filename}`;
+
+  db.get("SELECT photos FROM profiles WHERE user_id = ?", [userId], (err, row) => {
+    if (err) return res.status(500).json({ message: "DB error" });
+
+    let photos = [];
+    try { photos = JSON.parse(row?.photos || "[]"); } catch { photos = []; }
+
+    photos[0] = fileUrl;         // Pflichtfoto setzen
+    photos = photos.slice(0, 2); // später max 2 (für später vorbereitet)
+
+    db.run(
+      "UPDATE profiles SET photos = ?, updated_at = datetime('now') WHERE user_id = ?",
+      [JSON.stringify(photos), userId],
+      (err2) => {
+        if (err2) return res.status(500).json({ message: "DB error" });
+        return res.json({ message: "Main photo saved", photos });
+      }
+    );
+  });
+});
+
+// Zweites Foto hochladen/ersetzen -> wird als profiles.photos[1] gespeichert (optional)
+app.post("/api/photos/second", requireLogin, upload.single("photo"), (req, res) => {
+  const userId = req.session.userId;
+
+  if (!req.file) {
+    return res.status(400).json({ message: "No file uploaded" });
+  }
+
+  const fileUrl = `/uploads/${req.file.filename}`;
+
+  db.get("SELECT photos FROM profiles WHERE user_id = ?", [userId], (err, row) => {
+    if (err) return res.status(500).json({ message: "DB error" });
+
+    let photos = [];
+    try { photos = JSON.parse(row?.photos || "[]"); } catch { photos = []; }
+
+    // Sicherheit: main muss existieren, bevor second gesetzt wird
+    if (!photos[0]) {
+      return res.status(400).json({ message: "Please upload Picture 1 first." });
+    }
+
+    photos[1] = fileUrl;         // optionales Foto setzen
+    photos = photos.slice(0, 2);
+
+    db.run(
+      "UPDATE profiles SET photos = ?, updated_at = datetime('now') WHERE user_id = ?",
+      [JSON.stringify(photos), userId],
+      (err2) => {
+        if (err2) return res.status(500).json({ message: "DB error" });
+        return res.json({ message: "Second photo saved", photos });
+      }
+    );
+  });
+});
+
+
+// Fotos holen (für Manage Pictures UI)
+app.get("/api/photos", requireLogin, (req, res) => {
+  const userId = req.session.userId;
+
+  db.get("SELECT photos FROM profiles WHERE user_id = ?", [userId], (err, row) => {
+    if (err) return res.status(500).json({ message: "DB error" });
+
+    let photos = [];
+    try { photos = JSON.parse(row?.photos || "[]"); } catch { photos = []; }
+
+    return res.json({ photos });
+  });
+});
+
+// Foto löschen: /api/photos/0 oder /api/photos/1
+app.delete("/api/photos/:idx", requireLogin, (req, res) => {
+  const userId = req.session.userId;
+  const idx = Number(req.params.idx);
+
+  if (![0, 1].includes(idx)) {
+    return res.status(400).json({ message: "Invalid photo index" });
+  }
+
+  db.get("SELECT photos FROM profiles WHERE user_id = ?", [userId], (err, row) => {
+    if (err) return res.status(500).json({ message: "DB error" });
+
+    let photos = [];
+    try { photos = JSON.parse(row?.photos || "[]"); } catch { photos = []; }
+
+    // Wenn dieses Foto gar nicht existiert -> ok, nichts zu tun
+    if (!photos[idx]) {
+      return res.json({ photos });
+    }
+
+    // Regel: mind. 1 Foto muss bleiben
+    const existingCount = photos.filter(Boolean).length;
+    if (existingCount <= 1) {
+      return res.status(400).json({ message: "You must keep at least 1 picture." });
+    }
+
+    // Datei optional auch von Disk entfernen
+    try {
+      const filePath = path.join(__dirname, photos[idx]); // photos[idx] ist "/uploads/..."
+      // path.join mit "/uploads/.." würde rooten, daher normalize:
+      const safePath = path.join(__dirname, photos[idx].replace("/uploads/", "uploads/"));
+      if (fs.existsSync(safePath)) fs.unlinkSync(safePath);
+    } catch (e) {
+      // wenn löschen fehlschlägt -> DB trotzdem updaten
+    }
+
+    // Entfernen:
+    photos[idx] = null;
+
+    // Wenn main gelöscht wurde und second existiert -> nach vorne schieben
+    if (idx === 0 && photos[1]) {
+      photos[0] = photos[1];
+      photos[1] = null;
+    }
+
+    // clean auf Länge 2
+    const cleaned = [photos[0] || null, photos[1] || null].filter(v => v !== null);
+
+    db.run(
+      "UPDATE profiles SET photos = ?, updated_at = datetime('now') WHERE user_id = ?",
+      [JSON.stringify(cleaned), userId],
+      (err2) => {
+        if (err2) return res.status(500).json({ message: "DB error" });
+        return res.json({ photos: cleaned });
+      }
+    );
+  });
 });
 
 

@@ -39,7 +39,7 @@ async function prefillProfileForm() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  // 1) Inputs vorausfüllen (hast du schon)
+  // 1) Inputs vorausfüllen (Name/Alter/Gender/Location aus Register + Bio/Hobbies aus Profile)
   await prefillProfileForm();
 
   // 2) Mode prüfen: onboarding (default) vs edit (von Homepage)
@@ -49,11 +49,27 @@ document.addEventListener("DOMContentLoaded", async () => {
   const closeBtn = document.getElementById("closeBtn");
   const hintText = document.getElementById("hintText");
 
+  // My Pictures Elemente (existieren im HTML, aber sollen nur im Edit sichtbar sein)
+  const myPicturesWrap = document.getElementById("myPicturesWrap");
+  const managePicsBtn = document.getElementById("managePics");
+
   if (mode === "edit") {
-    // Edit-Mode: Skip + Hint weg, X anzeigen
+    // EDIT-MODE (Homepage -> Profil):
+    // - Skip + Hint weg
+    // - X sichtbar
+    // - My Pictures sichtbar
     if (skipBtn) skipBtn.classList.add("d-none");
     if (hintText) hintText.classList.add("d-none");
     if (closeBtn) closeBtn.classList.remove("d-none");
+
+    if (myPicturesWrap) myPicturesWrap.classList.remove("d-none");
+
+    // Button öffnet Manage Pictures Seite
+    if (managePicsBtn) {
+      managePicsBtn.addEventListener("click", () => {
+        window.location.href = "/manage-pictures";
+      });
+    }
 
     // X schließt zurück zur Homepage
     if (closeBtn) {
@@ -62,12 +78,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     }
   } else {
-    // Onboarding-Mode: Skip sichtbar, X weg
+    // ONBOARDING (nach Register/Login wenn Profil fehlt):
+    // - Skip + Hint sichtbar
+    // - X weg
+    // - My Pictures sicher verstecken
     if (skipBtn) skipBtn.classList.remove("d-none");
     if (hintText) hintText.classList.remove("d-none");
     if (closeBtn) closeBtn.classList.add("d-none");
+
+    if (myPicturesWrap) myPicturesWrap.classList.add("d-none");
   }
 });
+
 
 
 skipBtn.addEventListener("click", async () => {
@@ -80,7 +102,7 @@ skipBtn.addEventListener("click", async () => {
       return;
     }
 
-    window.location.href = "/index";
+    window.location.href = "/upload-photo";
   } catch (e) {
     showError("❌ Network error.");
   }
@@ -118,7 +140,16 @@ form.addEventListener("submit", async (e) => {
     }
 
     showSuccess("✅ Profile saved!");
-    setTimeout(() => (window.location.href = "/index"), 200);
+
+    // Edit-Mode -> zurück zur Homepage
+    // Onboarding -> Pflichtfoto Seite
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get("mode");
+
+    setTimeout(() => {
+      if (mode === "edit") window.location.href = "/index";      // Edit-Mode: Homepage
+      else window.location.href = "/upload-photo";              // Onboarding: Upload-Seite
+    }, 200);
   } catch (e) {
     showError("❌ Network error.");
   }
