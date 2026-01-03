@@ -61,20 +61,48 @@ db.run(`
 db.run(`
     CREATE TABLE IF NOT EXISTS profiles (
                                            user_id INTEGER PRIMARY KEY,
+
+                                           -- Basic profile fields
                                            bio TEXT DEFAULT '',
+                                           hobbies TEXT DEFAULT '',
+                                           zodiac TEXT DEFAULT '',
+                                           looking_for TEXT DEFAULT '',
+                                           extra TEXT DEFAULT '',
+
+                                           -- Discovery preferences (saved now, used later for filtering)
+                                           interested_in TEXT DEFAULT '',
+                                           pref_age_min INTEGER DEFAULT 18,
+                                           pref_age_max INTEGER DEFAULT 100,
+
+                                           -- existing fields
                                            prompts TEXT DEFAULT '[]',
                                            photos TEXT DEFAULT '[]',
+
                                            created_at TEXT DEFAULT (datetime('now')),
                                            updated_at TEXT DEFAULT (datetime('now')),
                                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )
 `);
-// Nachrüsten für bestehende DB: hobbies-Spalte hinzufügen (wenn schon vorhanden, ignorieren)
-db.run(`ALTER TABLE profiles ADD COLUMN hobbies TEXT DEFAULT ''`, (err) => {
+
+
+// Nachrüsten für bestehende DB: neue Spalten hinzufügen (wenn schon vorhanden, ignorieren)
+function addColumnSafe(sql) {
+  db.run(sql, (err) => {
     if (err && !err.message.includes("duplicate column")) {
-        console.error("ALTER TABLE ERROR:", err.message);
+      console.error("ALTER TABLE ERROR:", err.message);
     }
-});
+  });
+}
+
+addColumnSafe(`ALTER TABLE profiles ADD COLUMN hobbies TEXT DEFAULT ''`);
+addColumnSafe(`ALTER TABLE profiles ADD COLUMN zodiac TEXT DEFAULT ''`);
+addColumnSafe(`ALTER TABLE profiles ADD COLUMN looking_for TEXT DEFAULT ''`);
+addColumnSafe(`ALTER TABLE profiles ADD COLUMN extra TEXT DEFAULT ''`);
+
+addColumnSafe(`ALTER TABLE profiles ADD COLUMN interested_in TEXT DEFAULT ''`);
+addColumnSafe(`ALTER TABLE profiles ADD COLUMN pref_age_min INTEGER DEFAULT 18`);
+addColumnSafe(`ALTER TABLE profiles ADD COLUMN pref_age_max INTEGER DEFAULT 100`);
+
 
 
 
@@ -263,7 +291,9 @@ app.get("/api/profile", requireLogin, (req, res) => {
     db.get(
         `SELECT
             u.name, u.age, u.gender, u.location,
-            p.bio, p.hobbies
+            p.bio, p.hobbies,
+            p.zodiac, p.looking_for, p.extra,
+            p.interested_in, p.pref_age_min, p.pref_age_max
          FROM users u
          LEFT JOIN profiles p ON p.user_id = u.id
          WHERE u.id = ?`,
@@ -280,7 +310,18 @@ app.get("/api/profile", requireLogin, (req, res) => {
                 gender: row?.gender ?? "",
                 location: row?.location ?? "",
                 bio: row?.bio ?? "",
-                hobbies: row?.hobbies ?? ""
+                hobbies: row?.hobbies ?? "",
+
+                // Optional extra fields (homepage edit only)
+                zodiac: row?.zodiac ?? "",
+                lookingFor: row?.looking_for ?? "",
+                extra: row?.extra ?? "",
+
+                // Discovery preferences (saved now, filtering later)
+                interestedIn: row?.interested_in ?? "",
+                prefAgeMin: row?.pref_age_min ?? 18,
+                prefAgeMax: row?.pref_age_max ?? 100
+
             });
         }
     );
@@ -342,7 +383,25 @@ app.get("/api/discover", requireLogin, (req, res) => {
 
 // CREATE/UPSERT PROFILE (wird von create-profile.js genutzt)
 app.post("/api/profile", requireLogin, (req, res) => {
-    const { name, age, gender, location, bio = "", hobbies = "" } = req.body;
+    const {
+      name,
+      age,
+      gender,
+      location,
+      bio = "",
+      hobbies = "",
+
+      // New optional fields (homepage edit)
+      zodiac = "",
+      lookingFor = "",
+      extra = "",
+
+      // Discovery preferences
+      interestedIn = "",
+      prefAgeMin = 18,
+      prefAgeMax = 100
+    } = req.body;
+
     const userId = req.session.userId;
 
     if (!name || !age || !gender || !location) {
@@ -367,13 +426,34 @@ app.post("/api/profile", requireLogin, (req, res) => {
 
             // 2) profiles-Eintrag anlegen/aktualisieren
             db.run(
-                `INSERT INTO profiles (user_id, bio, hobbies)
-                 VALUES (?, ?, ?)
+                `INSERT INTO profiles (
+                    user_id, bio, hobbies,
+                    zodiac, looking_for, extra,
+                    interested_in, pref_age_min, pref_age_max
+                 )
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                  ON CONFLICT(user_id) DO UPDATE SET
                    bio = excluded.bio,
                    hobbies = excluded.hobbies,
+                   zodiac = excluded.zodiac,
+                   looking_for = excluded.looking_for,
+                   extra = excluded.extra,
+                   interested_in = excluded.interested_in,
+                   pref_age_min = excluded.pref_age_min,
+                   pref_age_max = excluded.pref_age_max,
                    updated_at = datetime('now')`,
-                [userId, bio, hobbies],
+                [
+                  userId,
+                  bio,
+                  hobbies,
+                  zodiac,
+                  lookingFor,
+                  extra,
+                  interestedIn,
+                  Number(prefAgeMin),
+                  Number(prefAgeMax)
+                ],
+
                 (err2) => {
                     if (err2) {
                         console.error("DB ERROR:", err2.message);
