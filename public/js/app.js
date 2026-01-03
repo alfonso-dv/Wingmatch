@@ -37,9 +37,11 @@ const seedProfiles = [
 
 const ACTION = { NOPE: "NOPE", LIKE: "LIKE", SUPER: "SUPER LIKE" };
 
+// Start: Seed bleibt drin, ABER später laden wir zusätzlich echte User-Profile vom Server
 let profiles = [...seedProfiles];
 
 const deck = document.getElementById("deck");
+
 const toast = document.getElementById("toast");
 const empty = document.getElementById("empty");
 const reloadBtn = document.getElementById("reload");
@@ -47,6 +49,30 @@ const reloadBtn = document.getElementById("reload");
 const nopeBtn = document.getElementById("nope");
 const likeBtn = document.getElementById("like");
 const superBtn = document.getElementById("super");
+
+// Lädt echte Profile (andere User) für die Homepage-Karten
+async function loadDiscoverProfiles() {
+  try {
+    const res = await fetch("/api/discover");
+    const data = await res.json();
+
+    if (!res.ok) {
+      // Wenn z.B. nicht eingeloggt -> nichts crashen, Seed bleibt
+      return;
+    }
+
+    const serverProfiles = Array.isArray(data.profiles) ? data.profiles : [];
+
+    // Wichtig: Seed bleibt weiterhin drin (Demo), echte User kommen VORNE dazu
+    // damit man sofort echte Leute sieht, wenn vorhanden.
+    profiles = [...serverProfiles, ...seedProfiles];
+
+    render();
+  } catch (e) {
+    // Netzwerkfehler -> Seed bleibt
+  }
+}
+
 
 function showToast(text) {
     toast.textContent = text;
@@ -127,14 +153,19 @@ function makeCard(profile, isTop) {
 
     const info = document.createElement("div");
     info.className = "info";
+
+    // About-me Text nur anzeigen, wenn wirklich etwas da ist
+    const bioText = (profile.bio || "").trim();
+    const bioHtml = bioText ? `<div class="bio">${bioText}</div>` : "";
+
     info.innerHTML = `
     <div class="row">
       <div class="name">${profile.name} <span class="age">${profile.age}</span></div>
-      <div class="dist">${profile.distanceKm} km</div>
     </div>
-    <div class="bio">${profile.bio}</div>
+    ${bioHtml}
     <div class="hint">Tap left/right for photos • Swipe to decide</div>
   `;
+
 
     card.appendChild(img);
     card.appendChild(pills);
@@ -256,11 +287,18 @@ superBtn.addEventListener("click", () => {
 });
 
 reloadBtn.addEventListener("click", () => {
+    // Reload setzt nur die Demo-Profile zurück
     profiles = [...seedProfiles];
     render();
+
+    // Danach echte User wieder nachladen (damit sie wieder vorkommen)
+    loadDiscoverProfiles();
 });
 
+// Initial: erst Demo rendern, dann echte User nachladen
 render();
+loadDiscoverProfiles();
+
 
 // Date Roulette Modal öffnen / schließen
 const rouletteBtn = document.getElementById("rouletteBtn");
@@ -385,6 +423,76 @@ if (logoutBtn) {
         window.location.href = "/login";
     });
 }
+
+// SETTINGS MODAL (öffnet erst ein Settings-Fenster, dann erst Confirm)
+const settingsBtn = document.getElementById("settingsBtn");
+const settingsModal = document.getElementById("settingsModal");
+
+const closeSettings = document.getElementById("closeSettings");
+const closeSettingsX = document.getElementById("closeSettingsX");
+
+const deleteAccountBtn = document.getElementById("deleteAccountBtn");
+
+// Helper: Modal schließen
+function hideSettingsModal() {
+  if (settingsModal) settingsModal.classList.add("hidden");
+}
+
+// Helper: Modal öffnen
+function showSettingsModal() {
+  if (settingsModal) settingsModal.classList.remove("hidden");
+}
+
+if (settingsBtn && settingsModal) {
+  // 1) Klick auf ⚙️ -> Settings Modal öffnen
+  settingsBtn.addEventListener("click", () => {
+    showSettingsModal();
+  });
+
+  // 2) Close Button -> Settings Modal schließen
+  if (closeSettings) {
+    closeSettings.addEventListener("click", () => {
+      hideSettingsModal();
+    });
+  }
+
+  // 3) X -> Settings Modal schließen
+  if (closeSettingsX) {
+    closeSettingsX.addEventListener("click", () => {
+      hideSettingsModal();
+    });
+  }
+
+  // 4) Delete Profile -> Confirm Dialog -> bei Abbrechen zurück im Settings Modal bleiben
+  if (deleteAccountBtn) {
+    deleteAccountBtn.addEventListener("click", async () => {
+
+      const ok = confirm("Do you really want to delete your account? This cannot be undone.");
+
+      // Wenn Abbrechen -> NICHT schließen, du bleibst im Settings Modal
+      if (!ok) return;
+
+      // Wenn OK -> Account löschen
+      const res = await fetch("/api/account", { method: "DELETE" });
+
+      // Wenn ok -> wie Logout: zurück zur Login-Page
+      if (res.ok) {
+        window.location.href = "/login";
+        return;
+      }
+
+      // Wenn Fehler -> Fehlermeldung zeigen (Settings bleibt offen)
+      try {
+        const data = await res.json();
+        alert(data.message || "Delete failed");
+      } catch {
+        alert("Delete failed");
+      }
+    });
+  }
+}
+
+
 
 // PROFILE BUTTON (Homepage)
 const profileBtn = document.getElementById("profileBtn");

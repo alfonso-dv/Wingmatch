@@ -286,6 +286,59 @@ app.get("/api/profile", requireLogin, (req, res) => {
     );
 });
 
+/* ================= DISCOVER API (Homepage Karten) ================= */
+// Liefert Profile von ANDEREN Usern (nicht der eingeloggte User)
+// Nur User mit mindestens 1 Foto (Pflichtfoto) werden zurückgegeben
+app.get("/api/discover", requireLogin, (req, res) => {
+  const me = req.session.userId;
+
+  db.all(
+    `SELECT
+        u.id AS userId,
+        u.name,
+        u.age,
+        p.bio,
+        p.photos
+     FROM users u
+     JOIN profiles p ON p.user_id = u.id
+     WHERE u.id != ?
+     ORDER BY p.updated_at DESC`,
+    [me],
+    (err, rows) => {
+      if (err) {
+        console.error("DB ERROR:", err.message);
+        return res.status(500).json({ message: "DB error" });
+      }
+
+      // photos ist als JSON-String gespeichert -> in Array umwandeln
+      const profiles = (rows || [])
+        .map((r) => {
+          let photosArr = [];
+          try {
+            photosArr = JSON.parse(r.photos || "[]");
+          } catch {
+            photosArr = [];
+          }
+
+          // Normalisieren: nur Strings behalten, leere entfernen
+          photosArr = photosArr.filter((x) => typeof x === "string" && x.trim().length > 0);
+
+          return {
+            id: `u_${r.userId}`,
+            name: r.name || "",
+            age: r.age || "",
+            bio: (r.bio || "").trim(),
+            photos: photosArr
+          };
+        })
+        // Pflicht: mindestens 1 Foto, sonst nicht anzeigen
+        .filter((p) => p.photos.length >= 1);
+
+      return res.json({ profiles });
+    }
+  );
+});
+
 
 // CREATE/UPSERT PROFILE (wird von create-profile.js genutzt)
 app.post("/api/profile", requireLogin, (req, res) => {
@@ -378,6 +431,49 @@ app.post("/api/logout", (req, res) => {
         res.json({ message: "Logged out" });
     });
 });
+
+// DELETE ACCOUNT (löscht User + Profil + Upload-Files)
+app.delete("/api/account", requireLogin, (req, res) => {
+  const userId = req.session.userId;
+
+  // 1) Fotos holen (damit wir die Dateien von Disk löschen können)
+  db.get("SELECT photos FROM profiles WHERE user_id = ?", [userId], (err, row) => {
+    if (err) {
+      console.error("DB ERROR:", err.message);
+      return res.status(500).json({ message: "DB error" });
+    }
+
+    let photos = [];
+    try { photos = JSON.parse(row?.photos || "[]"); } catch { photos = []; }
+
+    // 2) User löschen (profiles wird durch ON DELETE CASCADE automatisch mitgelöscht)
+    db.run("DELETE FROM users WHERE id = ?", [userId], (err2) => {
+      if (err2) {
+        console.error("DB ERROR:", err2.message);
+        return res.status(500).json({ message: "DB error" });
+      }
+
+      // 3) Upload-Dateien löschen (best-effort)
+      try {
+        photos
+          .filter((p) => typeof p === "string" && p.startsWith("/uploads/"))
+          .forEach((p) => {
+            const safePath = path.join(__dirname, p.replace("/uploads/", "uploads/"));
+            if (fs.existsSync(safePath)) fs.unlinkSync(safePath);
+          });
+      } catch (e) {
+        // wenn File-Delete fehlschlägt -> Account ist trotzdem weg (DB ist wichtiger)
+      }
+
+      // 4) Session löschen wie Logout
+      req.session.destroy(() => {
+        res.clearCookie("connect.sid");
+        return res.json({ message: "Account deleted" });
+      });
+    });
+  });
+});
+
 
 /* ================= PHOTO API (Pflichtfoto) ================= */
 
