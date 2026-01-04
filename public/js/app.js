@@ -4,6 +4,7 @@ const seedProfiles = [
         id: "p1",
         name: "Mia",
         age: 24,
+        gender: "Female",
         distanceKm: 3,
         bio: "Coffee first, adventure second.",
         photos: [
@@ -15,6 +16,7 @@ const seedProfiles = [
         id: "p2",
         name: "Jonas",
         age: 27,
+        gender: "Male",
         distanceKm: 8,
         bio: "Gym, books, and terrible jokes.",
         photos: [
@@ -26,6 +28,7 @@ const seedProfiles = [
         id: "p3",
         name: "Sofia",
         age: 26,
+        gender: "Female",
         distanceKm: 1,
         bio: "Looking for someone to split dumplings with.",
         photos: [
@@ -50,6 +53,65 @@ const nopeBtn = document.getElementById("nope");
 const likeBtn = document.getElementById("like");
 const superBtn = document.getElementById("super");
 
+// ============================================================
+// HOMEPAGE FILTERING (Preferences -> apply to swipe feed)
+// ============================================================
+
+// Loads the logged-in user's saved preferences from /api/profile
+async function loadMyPreferences() {
+  try {
+    const res = await fetch("/api/profile");
+    const data = await res.json();
+
+    if (!res.ok) {
+      // fallback: no filtering if we can't read preferences
+      return { interestedIn: "", prefAgeMin: 18, prefAgeMax: 100 };
+    }
+
+    return {
+      interestedIn: (data.interestedIn || "").trim(),
+      prefAgeMin: Number(data.prefAgeMin ?? 18),
+      prefAgeMax: Number(data.prefAgeMax ?? 100)
+    };
+  } catch {
+    return { interestedIn: "", prefAgeMin: 18, prefAgeMax: 100 };
+  }
+}
+
+// Maps "Interested in" values to allowed genders in your DB ("Male/Female/Non-binary/Other")
+function allowedGendersFromInterestedIn(interestedInRaw) {
+  const v = (interestedInRaw || "").toLowerCase();
+
+  if (!v || v === "everyone") return null;       // null => no gender filter
+  if (v === "men") return ["Male"];
+  if (v === "women") return ["Female"];
+  if (v === "other") return ["Non-binary", "Other"];
+
+  // unknown value => don't filter
+  return null;
+}
+
+// Returns true if a profile matches the user's preferences
+function matchesPreferences(profile, prefs) {
+  const age = Number(profile?.age);
+  const gender = (profile?.gender || "").trim();
+
+  // Age filter (inclusive)
+  if (!Number.isNaN(age)) {
+    if (age < prefs.prefAgeMin || age > prefs.prefAgeMax) return false;
+  }
+
+  // Gender filter
+  const allowed = allowedGendersFromInterestedIn(prefs.interestedIn);
+  if (allowed && gender) {
+    if (!allowed.includes(gender)) return false;
+  }
+
+  // If profile has no gender (shouldn't happen for real users), keep it
+  return true;
+}
+
+
 // Lädt echte Profile (andere User) für die Homepage-Karten
 async function loadDiscoverProfiles() {
   try {
@@ -63,11 +125,18 @@ async function loadDiscoverProfiles() {
 
     const serverProfiles = Array.isArray(data.profiles) ? data.profiles : [];
 
-    // Wichtig: Seed bleibt weiterhin drin (Demo), echte User kommen VORNE dazu
-    // damit man sofort echte Leute sieht, wenn vorhanden.
-    profiles = [...serverProfiles, ...seedProfiles];
+    // 1) Load my saved preferences (Interested in + age range)
+    const prefs = await loadMyPreferences();
+
+    // 2) Apply filtering to BOTH: real server profiles + seed profiles
+    const filteredServer = serverProfiles.filter((p) => matchesPreferences(p, prefs));
+    const filteredSeed = seedProfiles.filter((p) => matchesPreferences(p, prefs));
+
+    // 3) Keep same behavior: real users first, then demo cards
+    profiles = [...filteredServer, ...filteredSeed];
 
     render();
+
   } catch (e) {
     // Netzwerkfehler -> Seed bleibt
   }

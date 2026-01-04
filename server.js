@@ -338,12 +338,14 @@ app.get("/api/discover", requireLogin, (req, res) => {
         u.id AS userId,
         u.name,
         u.age,
+        u.gender,              -- NEW: needed for homepage filtering
         p.bio,
         p.photos
      FROM users u
      JOIN profiles p ON p.user_id = u.id
      WHERE u.id != ?
      ORDER BY p.updated_at DESC`,
+
     [me],
     (err, rows) => {
       if (err) {
@@ -368,9 +370,11 @@ app.get("/api/discover", requireLogin, (req, res) => {
             id: `u_${r.userId}`,
             name: r.name || "",
             age: r.age || "",
+            gender: r.gender || "",         // NEW: needed for filtering
             bio: (r.bio || "").trim(),
             photos: photosArr
           };
+
         })
         // Pflicht: mindestens 1 Foto, sonst nicht anzeigen
         .filter((p) => p.photos.length >= 1);
