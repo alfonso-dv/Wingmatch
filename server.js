@@ -705,3 +705,85 @@ app.delete("/api/photos/:idx", requireLogin, (req, res) => {
 app.listen(PORT, () => {
     console.log(`✅ Server running at http://localhost:${PORT}`);
 });
+
+/* ================= PROMPTS API ================= */
+
+// Alle Prompts laden
+app.get('/api/prompts', requireLogin, (req, res) => {
+    db.all('SELECT * FROM prompts', [], (err, rows) => {
+        if (err) {
+            console.error("DB ERROR:", err.message);
+            return res.status(500).json({ message: "DB error" });
+        }
+        res.json(rows);
+    });
+});
+
+
+// Prompt-Antwort speichern / updaten
+app.post('/api/prompts/answer', requireLogin, (req, res) => {
+    const userId = req.session.userId;   // 🔑 WICHTIG
+    const { prompt_id, answer } = req.body;
+
+    if (!prompt_id || !answer) {
+        return res.status(400).json({ message: "Missing data" });
+    }
+
+    db.run(
+        `
+        INSERT INTO user_prompt_answers (user_id, prompt_id, answer)
+        VALUES (?, ?, ?)
+        ON CONFLICT(user_id, prompt_id)
+        DO UPDATE SET answer = excluded.answer
+        `,
+        [userId, prompt_id, answer],
+        function (err) {
+            if (err) {
+                console.error("DB ERROR:", err.message);
+                return res.status(500).json({ message: "DB error" });
+            }
+
+            res.json({ success: true });
+        }
+    );
+});
+
+
+// Prompt-Antwort löschen
+app.delete('/api/prompts/answer/:promptId', requireLogin, (req, res) => {
+    const userId = req.session.userId;
+    const promptId = Number(req.params.promptId);
+
+    db.run(
+        `DELETE FROM user_prompt_answers
+         WHERE user_id = ? AND prompt_id = ?`,
+        [userId, promptId],
+        function (err) {
+            if (err) {
+                console.error("DB ERROR:", err.message);
+                return res.status(500).json({ message: "DB error" });
+            }
+
+            res.json({ deleted: true });
+        }
+    );
+});
+// Gespeicherte Prompt-Antworten eines Users holen
+app.get('/api/prompts/answers', requireLogin, (req, res) => {
+    const userId = req.session.userId;
+
+    db.all(
+        `SELECT prompt_id, answer
+         FROM user_prompt_answers
+         WHERE user_id = ?`,
+        [userId],
+        (err, rows) => {
+            if (err) {
+                console.error("DB ERROR:", err.message);
+                return res.status(500).json({ message: "DB error" });
+            }
+
+            res.json(rows);
+        }
+    );
+});
