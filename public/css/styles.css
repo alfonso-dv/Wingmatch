@@ -1,4 +1,5 @@
-/* style.css: */
+/* styles.css */
+
 :root {
     --bg: #f4f4f6;
     --cardRadius: 28px;
@@ -7,39 +8,51 @@
 }
 
 * { box-sizing: border-box; }
-html, body { height: auto; }
+html, body { height: 100%; }
+
 body {
     margin: 0;
     font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-    background: radial-gradient(1100px 600px at 50% 0%, rgba(255, 77, 121, 0.12), rgba(0,0,0,0) 60%),
-    linear-gradient(180deg, #fafafa, var(--bg));
-
-    display: flex;
-    justify-content: center;
-    padding: 16px;
-
-    overflow-y: auto;
+    background:
+            radial-gradient(1100px 600px at 50% 0%, rgba(255, 77, 121, 0.12), rgba(0,0,0,0) 60%),
+            linear-gradient(180deg, #fafafa, var(--bg));
+    overflow-x: hidden;
 }
 
+/* =========================
+   DESKTOP LAYOUT (NEW)
+   left list | phone | right list
+========================= */
+.desktop-layout {
+    width: 100%;
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: minmax(220px, 320px) minmax(360px, 460px) minmax(220px, 320px);
+    gap: 18px;
+    align-items: start;
+    justify-content: center;
+    padding: 18px;
+}
 
+/* =========================
+   PHONE APP FRAME (CENTER)
+========================= */
 .app {
-    width: min(420px, 100%);
-    min-height: calc(100vh - 32px);
-    height: auto;
-
+    width: 100%;
+    height: min(820px, calc(100vh - 36px));
     background: rgba(255,255,255,0.72);
     border: 1px solid rgba(0,0,0,0.07);
     border-radius: 34px;
     box-shadow: var(--shadow);
     backdrop-filter: blur(10px);
-
     display: flex;
     flex-direction: column;
-
-    overflow-y: auto;   /* 🔑 DAS ist entscheidend */
+    overflow: hidden; /* important: keep phone frame clean */
 }
 
-
+/* =========================
+   TOP BAR
+========================= */
 .topbar {
     height: 64px;
     padding: 0 16px;
@@ -58,7 +71,7 @@ body {
 }
 .title { font-weight: 900; letter-spacing: 0.2px; }
 
-.top-actions { display: flex; gap: 10px; }
+.top-actions { display: flex; gap: 10px; align-items: center; }
 .icon-btn {
     width: 40px; height: 40px;
     border-radius: 999px;
@@ -68,11 +81,26 @@ body {
     box-shadow: 0 10px 25px rgba(0,0,0,0.08);
 }
 
+.icon-btn.logout {
+    margin-left: 8px;
+    color: #ff5a5f;
+    width: auto;
+    padding: 0 12px;
+    font-weight: 800;
+}
+
+.icon-btn.logout:hover {
+    background: rgba(255, 90, 95, 0.15);
+}
+
+/* =========================
+   MAIN SWIPE STAGE (INSIDE PHONE)
+========================= */
 .stage {
     position: relative;
     flex: 1;
     padding: 16px;
-    overflow: visible;
+    overflow: hidden; /* important: avoid scrollbars inside the card area */
 }
 
 .deck {
@@ -90,7 +118,7 @@ body {
     box-shadow: var(--softShadow);
     background: #000;
     user-select: none;
-    touch-action: none;
+    touch-action: none; /* required for swipe */
     transform: translate(0px, 0px) rotate(0deg);
     transition: transform 180ms ease;
 }
@@ -135,9 +163,25 @@ body {
     z-index: 2;
     opacity: 0;
 }
-.badge.like { left: 16px; transform: rotate(-12deg); border: 3px solid rgba(46, 204, 113, 0.95); color: rgba(46, 204, 113, 0.95); }
-.badge.nope { right: 16px; transform: rotate(12deg); border: 3px solid rgba(231, 76, 60, 0.95); color: rgba(231, 76, 60, 0.95); }
-.badge.super { left: 50%; transform: translateX(-50%); top: 70px; border: 3px solid rgba(52, 152, 219, 0.95); color: rgba(52, 152, 219, 0.95); }
+.badge.like {
+    left: 16px;
+    transform: rotate(-12deg);
+    border: 3px solid rgba(46, 204, 113, 0.95);
+    color: rgba(46, 204, 113, 0.95);
+}
+.badge.nope {
+    right: 16px;
+    transform: rotate(12deg);
+    border: 3px solid rgba(231, 76, 60, 0.95);
+    color: rgba(231, 76, 60, 0.95);
+}
+.badge.super {
+    left: 50%;
+    transform: translateX(-50%);
+    top: 70px;
+    border: 3px solid rgba(52, 152, 219, 0.95);
+    color: rgba(52, 152, 219, 0.95);
+}
 
 .info {
     position: absolute;
@@ -145,22 +189,28 @@ body {
     color: #fff;
     z-index: 2;
 }
+
 .row {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
     gap: 10px;
 }
+
 .name {
     font-size: 28px;
     font-weight: 900;
     line-height: 1.1;
 }
+
 .age { font-size: 24px; font-weight: 800; opacity: 0.95; }
 .dist { opacity: 0.9; font-weight: 700; }
 .bio { margin-top: 8px; opacity: 0.92; font-weight: 600; }
 .hint { margin-top: 10px; opacity: 0.8; font-size: 12px; }
 
+/* =========================
+   BOTTOM ACTIONS (INSIDE PHONE)
+========================= */
 .actions {
     padding: 14px 18px 18px;
     display: flex;
@@ -180,6 +230,9 @@ body {
 }
 .action-btn.super { width: 64px; height: 64px; font-size: 24px; }
 
+/* =========================
+   TOAST + EMPTY STATE (INSIDE PHONE)
+========================= */
 .toast {
     position: absolute;
     top: 12px;
@@ -220,22 +273,95 @@ body {
 
 .hidden { display: none; }
 
+/* =========================
+   SIDE LISTS (OUTSIDE PHONE)
+========================= */
+.side-list {
+    background: rgba(255, 255, 255, 0.80);
+    border: 1px solid rgba(0,0,0,0.07);
+    border-radius: 18px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+    padding: 12px;
+    overflow: hidden;
+    max-height: min(820px, calc(100vh - 36px));
+    display: flex;
+    flex-direction: column;
+}
 
-/* ================================
-   Roulette Modal
-================================ */
+.side-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.side-header h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 900;
+    letter-spacing: 0.2px;
+}
+
+.info-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    border: 1px solid rgba(0,0,0,0.08);
+    background: #fff;
+    cursor: pointer;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    font-size: 14px;
+    display: grid;
+    place-items: center;
+}
+
+.side-items {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: auto;
+}
+
+.side-item {
+    padding: 10px;
+    border-radius: 14px;
+    background: rgba(0,0,0,0.03);
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+.side-name {
+    font-weight: 900;
+    font-size: 13px;
+}
+
+.side-sub {
+    font-weight: 600;
+    font-size: 12px;
+    opacity: 0.7;
+    margin-top: 2px;
+}
+
+/* =========================
+   MODALS (OVER THE WHOLE PAGE)
+   Use fixed so they cover side lists too.
+========================= */
 .modal {
-    position: absolute;
+    position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.4);
     display: grid;
     place-items: center;
-    z-index: 10;
+    z-index: 1000;
 }
 
-/* ================================
-   Modal Box (größer)
-================================ */
+.modal.hidden {
+    display: none;
+}
+
 .modal-card {
     position: relative;
     background: white;
@@ -247,27 +373,18 @@ body {
     box-shadow: var(--shadow);
 }
 
-/* ================================
-   Titel (ALLE gleich groß)
-================================ */
 .modal-card h2 {
     font-size: 36px;
     font-weight: 900;
     margin-bottom: 24px;
 }
 
-/* ================================
-   Normaler Text (What are you...)
-================================ */
 .modal-card p {
     font-size: 22px;
     font-weight: 600;
     margin-bottom: 28px;
 }
 
-/* ================================
-   Auswahl Buttons (Date / Food)
-================================ */
 .roulette-option {
     width: 100%;
     margin-top: 18px;
@@ -280,9 +397,6 @@ body {
     cursor: pointer;
 }
 
-/* ================================
-   Close Text Button (unten)
-================================ */
 .close-btn {
     margin-top: 28px;
     background: none;
@@ -292,16 +406,6 @@ body {
     cursor: pointer;
 }
 
-/* ================================
-   Modal verstecken
-================================ */
-.modal.hidden {
-    display: none;
-}
-
-/* ================================
-   X oben rechts (größer)
-================================ */
 .close-x {
     position: absolute;
     top: 18px;
@@ -313,9 +417,6 @@ body {
     cursor: pointer;
 }
 
-/* ================================
-   Zurück Pfeil (größer)
-================================ */
 .back-arrow {
     position: absolute;
     top: 18px;
@@ -327,9 +428,6 @@ body {
     cursor: pointer;
 }
 
-/* ================================
-   Ergebnis Anzeige (Tap Spin / Ergebnis)
-================================ */
 .spin-result {
     margin: 32px 0;
     padding: 30px;
@@ -339,9 +437,6 @@ body {
     font-weight: 900;
 }
 
-/* ================================
-   Spin Button (groß & klar)
-================================ */
 .spin-btn {
     width: 100%;
     padding: 26px;
@@ -353,22 +448,135 @@ body {
     font-size: 22px;
     cursor: pointer;
 }
+
 .error-text {
-    color: #d32f2f;        /* rot */
-    font-weight: 700;      /* BOLD */
+    color: #d32f2f;
+    font-weight: 700;
     text-align: center;
     margin-bottom: 12px;
 }
 
-#errorMsg {
-    font-weight: bold;
+#errorMsg { font-weight: bold; }
+
+/* =========================
+   RESPONSIVE
+   Hide side lists on smaller screens
+========================= */
+@media (max-width: 900px) {
+    .desktop-layout {
+        grid-template-columns: 1fr;
+    }
+    .side-list {
+        display: none;
+    }
+    .app {
+        max-width: 460px;
+        margin: 0 auto;
+    }
 }
-.icon-btn.logout {
-    margin-left: 8px;
+
+/* Side header actions (Wingmen: + and info) */
+.side-header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.mini-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    border: 1px solid rgba(0,0,0,0.08);
+    background: #fff;
+    cursor: pointer;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    font-size: 16px;
+    font-weight: 900;
+    display: grid;
+    place-items: center;
+}
+
+/* Side list row layout with remove button */
+.side-item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.side-item-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.small-btn {
+    border: 1px solid rgba(0,0,0,0.10);
+    background: #fff;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    font-size: 12px;
+}
+
+.small-btn.danger {
     color: #ff5a5f;
 }
 
-.icon-btn.logout:hover {
-    background: rgba(255, 90, 95, 0.15);
+/* Add Wingman modal input + results */
+.text-input {
+    width: 100%;
+    margin-top: 10px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid rgba(0,0,0,0.12);
+    font-size: 16px;
+    font-weight: 700;
+    outline: none;
+}
+
+.small-hint {
+    margin-top: 8px;
+    font-size: 12px;
+    opacity: 0.7;
+    font-weight: 700;
+}
+
+.search-results {
+    list-style: none;
+    padding: 0;
+    margin: 16px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 260px;
+    overflow: auto;
+}
+
+.search-result-item {
+    padding: 12px;
+    border-radius: 16px;
+    background: rgba(0,0,0,0.03);
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+.search-result-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.search-result-name {
+    font-weight: 900;
+}
+
+.search-result-sub {
+    margin-top: 4px;
+    font-size: 12px;
+    opacity: 0.75;
+    font-weight: 700;
 }
 

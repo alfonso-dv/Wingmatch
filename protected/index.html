@@ -1,4 +1,3 @@
-<!-- index.html: -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -6,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="Content-Security-Policy"
           content="
-        default-src 'self';
-        img-src 'self' https://images.unsplash.com data:;
-        style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
-        script-src 'self';
-      ">
+          default-src 'self';
+          img-src 'self' https://images.unsplash.com data:;
+          style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+          script-src 'self';
+        ">
 
     <title>Wingmatch</title>
     <link rel="stylesheet" href="/css/styles.css" />
@@ -18,107 +17,144 @@
 
 <body>
 
+<!-- DESKTOP LAYOUT: left list | phone app | right list -->
+<div class="desktop-layout">
 
-<div class="app">
-    <header class="topbar">
-        <div class="top-actions">
-            <button id="profileBtn" class="icon-btn" title="Profile">👤</button>
+    <!-- LEFT LIST: Wingmen (outside phone rectangle) -->
+    <aside class="side-list left">
+        <div class="side-header">
+            <h3>Wingmen</h3>
+
+            <div class="side-header-actions">
+                <button id="addWingmanBtn" class="mini-btn" title="Add Wingman">＋</button>
+                <button id="wingmenInfoBtn" class="info-btn" title="Info">ℹ️</button>
+            </div>
         </div>
 
-        <div class="brand">
-            <div class="logo">W</div>
-            <div class="title">Wingmatch</div>
+
+        <ul class="side-items" id="wingmenList">
+            <li class="side-item">
+                <div class="side-name">Alex</div>
+                <div class="side-sub">Online</div>
+            </li>
+            <li class="side-item">
+                <div class="side-name">Sam</div>
+                <div class="side-sub">Last seen: 2h ago</div>
+            </li>
+            <li class="side-item">
+                <div class="side-name">Jordan</div>
+                <div class="side-sub">New wingman</div>
+            </li>
+        </ul>
+    </aside>
+
+    <!-- PHONE APP (center column) -->
+    <div class="app">
+
+        <header class="topbar">
+            <div class="top-actions">
+                <button id="profileBtn" class="icon-btn" title="Profile">👤</button>
+            </div>
+
+            <div class="brand">
+                <div class="logo">W</div>
+                <div class="title">Wingmatch</div>
+            </div>
+
+            <div class="top-actions">
+                <!-- Date Roulette Button -->
+                <button id="rouletteBtn" class="icon-btn" title="Date Roulette">🎲</button>
+
+                <!-- Settings -->
+                <button id="settingsBtn" class="icon-btn" title="Settings">⚙️</button>
+
+                <!-- Messages -->
+                <button class="icon-btn" title="Messages">💬</button>
+
+                <button id="logoutBtn" class="icon-btn logout" title="Logout">Logout</button>
+            </div>
+        </header>
+
+        <main class="stage">
+            <div id="deck" class="deck"></div>
+
+            <div id="empty" class="empty hidden">
+                <h2>You’re all caught up 🎉</h2>
+                <p>Reload demo profiles to keep swiping.</p>
+                <button id="reload" class="reload-btn">Reload</button>
+            </div>
+
+            <div id="toast" class="toast hidden"></div>
+        </main>
+
+        <footer class="actions">
+            <button id="nope" class="action-btn nope" aria-label="Nope">✖️</button>
+            <button id="super" class="action-btn super" aria-label="Super Like">⭐</button>
+            <button id="like" class="action-btn like" aria-label="Like">❤️</button>
+        </footer>
+    </div>
+
+    <!-- RIGHT LIST: Best Friends (outside phone rectangle) -->
+    <aside class="side-list right">
+        <div class="side-header">
+            <h3>Best Friends</h3>
+            <button id="bestFriendsInfoBtn" class="info-btn" title="Info">ℹ️</button>
         </div>
 
-        <div class="top-actions">
+        <ul class="side-items" id="bestFriendsList">
+            <li class="side-item">
+                <div class="side-name">Mia</div>
+                <div class="side-sub">Your #1 hype friend</div>
+            </li>
+            <li class="side-item">
+                <div class="side-name">Chris</div>
+                <div class="side-sub">Gives great advice</div>
+            </li>
+            <li class="side-item">
+                <div class="side-name">Lina</div>
+                <div class="side-sub">Always down for food</div>
+            </li>
+        </ul>
+    </aside>
 
-            <!-- Date Roulette Button -->
-            <button id="rouletteBtn" class="icon-btn" title="Date Roulette">🎲</button>
-
-            <!-- Settings -->
-            <button id="settingsBtn" class="icon-btn" title="Settings">⚙️</button>
-
-            <!-- Messages -->
-            <button class="icon-btn" title="Messages">💬</button>
-            <button id="logoutBtn" class="icon-btn logout" title="Logout">Logout</button>
-
-        </div>
-
-    </header>
-    <!-- Logout Modal -->
-
-
-    <main class="stage">
-        <div id="deck" class="deck"></div>
-
-        <div id="empty" class="empty hidden">
-            <h2>You’re all caught up 🎉</h2>
-            <p>Reload demo profiles to keep swiping.</p>
-            <button id="reload" class="reload-btn">Reload</button>
-        </div>
-
-        <div id="toast" class="toast hidden"></div>
-    </main>
-
-    <footer class="actions">
-        <button id="nope" class="action-btn nope" aria-label="Nope">✖️</button>
-        <button id="super" class="action-btn super" aria-label="Super Like">⭐</button>
-        <button id="like" class="action-btn like" aria-label="Like">❤️</button>
-    </footer>
 </div>
+
 <!-- Date Roulette Modal -->
 <div id="rouletteModal" class="modal hidden">
     <div class="modal-card">
-        <!-- Schließen (X) -->
         <button id="closeRouletteX" class="close-x">✕</button>
         <h2>Date Roulette</h2>
 
         <p>What are you in the mood for?</p>
 
-        <button class="roulette-option" id="dateIdeasBtn">
-            Date Ideas
-        </button>
-
-        <button class="roulette-option" id="foodDiningBtn">
-            Food & Dining
-        </button>
+        <button class="roulette-option" id="dateIdeasBtn">Date Ideas</button>
+        <button class="roulette-option" id="foodDiningBtn">Food &amp; Dining</button>
 
         <button id="closeRoulette" class="close-btn">Close</button>
     </div>
 </div>
+
 <!-- Roulette Spin Modal -->
 <div id="spinModal" class="modal hidden">
     <div class="modal-card roulette-spin">
-
-        <!-- Schließen -->
         <button id="backToChoice" class="back-arrow">←</button>
         <button id="closeSpin" class="close-x">✕</button>
 
         <h2 id="spinTitle">Roulette</h2>
 
+        <div id="spinResult" class="spin-result">Tap Spin</div>
 
-        <!-- Anzeige -->
-        <div id="spinResult" class="spin-result">
-            Tap Spin
-        </div>
-
-        <!-- Drehen -->
-        <button id="spinBtn" class="spin-btn">
-            Spin
-        </button>
+        <button id="spinBtn" class="spin-btn">Spin</button>
     </div>
-
 </div>
+
 <!-- Settings Modal -->
 <div id="settingsModal" class="modal hidden">
     <div class="modal-card">
-
-        <!-- Schließen (X) -->
         <button id="closeSettingsX" class="close-x">✕</button>
 
         <h2>Settings</h2>
 
-        <!-- Nur 1 Button (wie "My Pictures" Style: wir nutzen dein vorhandenes Button-Design "roulette-option") -->
         <button id="deleteAccountBtn" class="roulette-option">
             Delete Profile
         </button>
@@ -127,10 +163,36 @@
     </div>
 </div>
 
+<!-- Info Modal (used by Wingmen + Best Friends info buttons) -->
+<div id="infoModal" class="modal hidden">
+    <div class="modal-card">
+        <button id="closeInfoX" class="close-x">✕</button>
+
+        <h2 id="infoTitle">Info</h2>
+        <p id="infoText">Placeholder info text.</p>
+
+        <button id="closeInfo" class="close-btn">Close</button>
+    </div>
+</div>
+
+<!-- Add Wingman Modal -->
+<div id="addWingmanModal" class="modal hidden">
+    <div class="modal-card">
+        <button id="closeAddWingmanX" class="close-x">✕</button>
+
+        <h2>Add Wingman</h2>
+        <p>Search by name or email, then add them as your wingman.</p>
+
+        <input id="wingmanSearchInput" class="text-input" type="text" placeholder="Search users..." />
+        <div id="wingmanSearchHint" class="small-hint">Type at least 2 characters.</div>
+
+        <ul id="wingmanSearchResults" class="search-results"></ul>
+
+        <button id="closeAddWingman" class="close-btn">Close</button>
+    </div>
+</div>
 
 
 <script src="/js/app.js"></script>
-
 </body>
 </html>
-

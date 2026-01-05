@@ -1,4 +1,4 @@
-/* server.js: */
+/* server.js */
 console.log("DB PATH:", require("path").resolve("./database.db"));
 
 const express = require("express");
@@ -9,102 +9,120 @@ const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
 
-
 const app = express();
 const PORT = 8080;
 
 /* ================= UPLOAD SETUP (Pflichtfoto) ================= */
 const UPLOAD_DIR = path.join(__dirname, "uploads");
-
-// falls Ordner nicht existiert -> anlegen
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR);
-}
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
-  filename: (req, file, cb) => {
-    // eindeutig: userId + timestamp + ext
-    const ext = path.extname(file.originalname || "");
-    cb(null, `user_${req.session.userId}_${Date.now()}${ext}`);
-  }
+    destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname || "");
+        // if session isn't set for some reason, fall back to "anon"
+        const uid = req.session?.userId ?? "anon";
+        cb(null, `user_${uid}_${Date.now()}${ext}`);
+    },
 });
 
 function fileFilter(req, file, cb) {
-  // nur Bilder erlauben
-  if (!file.mimetype.startsWith("image/")) {
-    return cb(new Error("Only images allowed"));
-  }
-  cb(null, true);
+    if (!file.mimetype.startsWith("image/")) {
+        return cb(new Error("Only images allowed"));
+    }
+    cb(null, true);
 }
 
 const upload = multer({ storage, fileFilter });
 
-
 /* ================= DATABASE ================= */
-const db = new sqlite3.Database(
-    path.join(__dirname, "database.db")
-);
+const db = new sqlite3.Database(path.join(__dirname, "database.db"));
 
-db.run(`
+db.serialize(() => {
+    db.run(`
     CREATE TABLE IF NOT EXISTS users (
-                                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                         email TEXT UNIQUE,
-                                         password TEXT,
-                                         name TEXT,
-                                         age INTEGER,
-                                         gender TEXT,
-                                         location TEXT
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT UNIQUE,
+      password TEXT,
+      name TEXT,
+      age INTEGER,
+      gender TEXT,
+      location TEXT
     )
-`);
+  `);
 
-db.run(`
+    db.run(`
     CREATE TABLE IF NOT EXISTS profiles (
-                                           user_id INTEGER PRIMARY KEY,
+      user_id INTEGER PRIMARY KEY,
 
-                                           -- Basic profile fields
-                                           bio TEXT DEFAULT '',
-                                           hobbies TEXT DEFAULT '',
-                                           zodiac TEXT DEFAULT '',
-                                           looking_for TEXT DEFAULT '',
-                                           extra TEXT DEFAULT '',
+      bio TEXT DEFAULT '',
+      hobbies TEXT DEFAULT '',
+      zodiac TEXT DEFAULT '',
+      looking_for TEXT DEFAULT '',
+      extra TEXT DEFAULT '',
 
-                                           -- Discovery preferences (saved now, used later for filtering)
-                                           interested_in TEXT DEFAULT '',
-                                           pref_age_min INTEGER DEFAULT 18,
-                                           pref_age_max INTEGER DEFAULT 100,
+      interested_in TEXT DEFAULT '',
+      pref_age_min INTEGER DEFAULT 18,
+      pref_age_max INTEGER DEFAULT 100,
 
-                                           -- existing fields
-                                           prompts TEXT DEFAULT '[]',
-                                           photos TEXT DEFAULT '[]',
+      prompts TEXT DEFAULT '[]',
+      photos TEXT DEFAULT '[]',
 
-                                           created_at TEXT DEFAULT (datetime('now')),
-                                           updated_at TEXT DEFAULT (datetime('now')),
-                                           FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )
+  `);
+
+    // Prompts tables (safe) — needed for your /api/prompts endpoints
+    db.run(`
+    CREATE TABLE IF NOT EXISTS prompts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      prompt_text TEXT NOT NULL
+    )
+  `);
+
+    db.run(`
+    CREATE TABLE IF NOT EXISTS user_prompt_answers (
+      user_id INTEGER NOT NULL,
+      prompt_id INTEGER NOT NULL,
+      answer TEXT NOT NULL,
+      PRIMARY KEY (user_id, prompt_id),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (prompt_id) REFERENCES prompts(id) ON DELETE CASCADE
+    )
+  `);
+
+    // Wingman Relationships
+    db.run(`
+  CREATE TABLE IF NOT EXISTS wingman_links (
+    user_id INTEGER NOT NULL,
+    wingman_user_id INTEGER NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id, wingman_user_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (wingman_user_id) REFERENCES users(id) ON DELETE CASCADE
+  )
 `);
 
 
-// Nachrüsten für bestehende DB: neue Spalten hinzufügen (wenn schon vorhanden, ignorieren)
-function addColumnSafe(sql) {
-  db.run(sql, (err) => {
-    if (err && !err.message.includes("duplicate column")) {
-      console.error("ALTER TABLE ERROR:", err.message);
+    // Safe add columns for older DBs
+    function addColumnSafe(sql) {
+        db.run(sql, (err) => {
+            if (err && !err.message.includes("duplicate column")) {
+                console.error("ALTER TABLE ERROR:", err.message);
+            }
+        });
     }
-  });
-}
 
-addColumnSafe(`ALTER TABLE profiles ADD COLUMN hobbies TEXT DEFAULT ''`);
-addColumnSafe(`ALTER TABLE profiles ADD COLUMN zodiac TEXT DEFAULT ''`);
-addColumnSafe(`ALTER TABLE profiles ADD COLUMN looking_for TEXT DEFAULT ''`);
-addColumnSafe(`ALTER TABLE profiles ADD COLUMN extra TEXT DEFAULT ''`);
-
-addColumnSafe(`ALTER TABLE profiles ADD COLUMN interested_in TEXT DEFAULT ''`);
-addColumnSafe(`ALTER TABLE profiles ADD COLUMN pref_age_min INTEGER DEFAULT 18`);
-addColumnSafe(`ALTER TABLE profiles ADD COLUMN pref_age_max INTEGER DEFAULT 100`);
-
-
-
+    addColumnSafe(`ALTER TABLE profiles ADD COLUMN hobbies TEXT DEFAULT ''`);
+    addColumnSafe(`ALTER TABLE profiles ADD COLUMN zodiac TEXT DEFAULT ''`);
+    addColumnSafe(`ALTER TABLE profiles ADD COLUMN looking_for TEXT DEFAULT ''`);
+    addColumnSafe(`ALTER TABLE profiles ADD COLUMN extra TEXT DEFAULT ''`);
+    addColumnSafe(`ALTER TABLE profiles ADD COLUMN interested_in TEXT DEFAULT ''`);
+    addColumnSafe(`ALTER TABLE profiles ADD COLUMN pref_age_min INTEGER DEFAULT 18`);
+    addColumnSafe(`ALTER TABLE profiles ADD COLUMN pref_age_max INTEGER DEFAULT 100`);
+});
 
 /* ================= MIDDLEWARE ================= */
 app.use(express.json());
@@ -115,9 +133,7 @@ app.use(
         secret: "wingmatch-secret",
         resave: false,
         saveUninitialized: false,
-        cookie: {
-            maxAge: 1000 * 60 * 60 // 1 Stunde
-        }
+        cookie: { maxAge: 1000 * 60 * 60 }, // 1 hour
     })
 );
 
@@ -125,10 +141,7 @@ app.use(
 app.use("/css", express.static(path.join(__dirname, "public/css")));
 app.use("/js", express.static(path.join(__dirname, "public/js")));
 app.use("/images", express.static(path.join(__dirname, "public/images")));
-
-// Profilbilder aus /uploads ausliefern (damit Browser sie anzeigen kann)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
 
 /* ================= DEBUG (optional) ================= */
 app.get("/debug-session", (req, res) => {
@@ -137,111 +150,86 @@ app.get("/debug-session", (req, res) => {
 
 /* ================= AUTH GUARD ================= */
 function requireLogin(req, res, next) {
-    if (!req.session.userId) {
-        return res.redirect("/login");
-    }
+    if (!req.session.userId) return res.redirect("/login");
     next();
 }
 
 /* ================= PUBLIC ROUTES ================= */
-app.get("/", (req, res) => {
-    res.redirect("/login");
-});
+app.get("/", (req, res) => res.redirect("/login"));
 
 app.get("/login", (req, res) => {
-    if (req.session.userId) {
-        return res.redirect("/index");
-    }
+    if (req.session.userId) return res.redirect("/index");
     res.sendFile(path.join(__dirname, "public/login.html"));
 });
 
 app.get("/register", (req, res) => {
-    if (req.session.userId) {
-        return res.redirect("/index");
-    }
+    if (req.session.userId) return res.redirect("/index");
     res.sendFile(path.join(__dirname, "public/register.html"));
 });
 
 /* ================= PROTECTED ROUTES ================= */
 app.get("/index", requireLogin, (req, res) => {
-  const userId = req.session.userId;
+    const userId = req.session.userId;
 
-  db.get(
-    "SELECT user_id, photos FROM profiles WHERE user_id = ?",
-    [userId],
-    (err, row) => {
-      if (err) {
-        console.error("DB ERROR:", err.message);
-        return res.status(500).send("DB error");
-      }
+    db.get(
+        "SELECT user_id, photos FROM profiles WHERE user_id = ?",
+        [userId],
+        (err, row) => {
+            if (err) {
+                console.error("DB ERROR:", err.message);
+                return res.status(500).send("DB error");
+            }
 
-      // 1) Profil existiert noch nicht -> zuerst Profil erstellen
-      if (!row) return res.redirect("/create-profile");
+            if (!row) return res.redirect("/create-profile");
 
-      // 2) Pflichtfoto prüfen
-      let photos = [];
-      try { photos = JSON.parse(row.photos || "[]"); } catch { photos = []; }
+            let photos = [];
+            try {
+                photos = JSON.parse(row.photos || "[]");
+            } catch {
+                photos = [];
+            }
 
-      if (!photos[0]) return res.redirect("/upload-photo");
+            if (!photos[0]) return res.redirect("/upload-photo");
 
-      // 3) Alles ok -> Homepage
-      return res.sendFile(path.join(__dirname, "protected/index.html"));
-    }
-  );
+            return res.sendFile(path.join(__dirname, "protected/index.html"));
+        }
+    );
 });
-
 
 app.get("/create-profile", requireLogin, (req, res) => {
     res.sendFile(path.join(__dirname, "public/create-profile.html"));
 });
 
-// Pflichtfoto-Seite
 app.get("/upload-photo", requireLogin, (req, res) => {
-  res.sendFile(path.join(__dirname, "public/upload-photo.html"));
+    res.sendFile(path.join(__dirname, "public/upload-photo.html"));
 });
 
-// My Pictures Seite (nur von Edit-Mode aus erreichbar)
 app.get("/manage-pictures", requireLogin, (req, res) => {
-  res.sendFile(path.join(__dirname, "public/manage-pictures.html"));
+    res.sendFile(path.join(__dirname, "public/manage-pictures.html"));
 });
 
 /* ================= BLOCK HTML DIRECT ACCESS ================= */
-// neu – statt "/*.html" eine Regex verwenden, damit Express 5 keinen Fehler wirft
 app.get(/.*\.html$/, (req, res) => {
     res.status(403).send("Access denied");
 });
 
-
 /* ================= AUTH API ================= */
-
-// REGISTER
 app.post("/api/register", async (req, res) => {
-    console.log("REGISTER BODY:", req.body);
-
     const { email, password, name, age, gender, location } = req.body;
 
     if (!email || !password || !name || !age || !gender || !location) {
         return res.status(400).json({ message: "Missing fields" });
     }
-
-    if (age < 18) {
-        return res.status(400).json({ message: "User must be at least 18" });
-    }
-
-    if (/\d/.test(name)) {
-        return res.status(400).json({ message: "Invalid name format" });
-    }
-
-    if (gender === "placeholder") {
-        return res.status(400).json({ message: "Please select a gender" });
-    }
+    if (Number(age) < 18) return res.status(400).json({ message: "User must be at least 18" });
+    if (/\d/.test(name)) return res.status(400).json({ message: "Invalid name format" });
+    if (gender === "placeholder") return res.status(400).json({ message: "Please select a gender" });
 
     const hash = await bcrypt.hash(password, 10);
 
     db.run(
         `INSERT INTO users (email, password, name, age, gender, location)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [email, hash, name, age, gender, location],
+     VALUES (?, ?, ?, ?, ?, ?)`,
+        [email, hash, name, Number(age), gender, location],
         function (err) {
             if (err) {
                 console.error("DB ERROR:", err.message);
@@ -251,264 +239,38 @@ app.post("/api/register", async (req, res) => {
                 return res.status(400).json({ message: "Registration failed" });
             }
 
-            // 🔐 Auto-Login nach Registrierung
-             req.session.userId = this.lastID;
-
-             // Profil ist nach Register noch nicht angelegt → als nächstes Profil-Seite
-             res.json({ message: "Registration successful", needsProfile: true });
-
+            req.session.userId = this.lastID;
+            res.json({ message: "Registration successful", needsProfile: true });
         }
     );
 });
 
-/* ================= PROFILE API ================= */
-
-// CREATE/UPSERT PROFILE (wird von create-profile.js genutzt)
-// SKIP: erstellt nur den profiles-Eintrag, damit /index nicht mehr zurück umleitet
-app.post("/api/profile/skip", requireLogin, (req, res) => {
-    const userId = req.session.userId;
-
-    db.run(
-        `INSERT INTO profiles (user_id)
-         VALUES (?)
-         ON CONFLICT(user_id) DO NOTHING`,
-        [userId],
-        (err) => {
-            if (err) {
-                console.error("DB ERROR:", err.message);
-                return res.status(500).json({ message: "DB error" });
-            }
-
-            return res.json({ message: "Skipped" });
-        }
-    );
-});
-
-// GET PROFILE (für Prefill in create-profile.js)
-app.get("/api/profile", requireLogin, (req, res) => {
-    const userId = req.session.userId;
-
-    db.get(
-        `SELECT
-            u.name, u.age, u.gender, u.location,
-            p.bio, p.hobbies,
-            p.zodiac, p.looking_for, p.extra,
-            p.interested_in, p.pref_age_min, p.pref_age_max
-         FROM users u
-         LEFT JOIN profiles p ON p.user_id = u.id
-         WHERE u.id = ?`,
-        [userId],
-        (err, row) => {
-            if (err) {
-                console.error("DB ERROR:", err.message);
-                return res.status(500).json({ message: "DB error" });
-            }
-
-            return res.json({
-                name: row?.name ?? "",
-                age: row?.age ?? "",
-                gender: row?.gender ?? "",
-                location: row?.location ?? "",
-                bio: row?.bio ?? "",
-                hobbies: row?.hobbies ?? "",
-
-                // Optional extra fields (homepage edit only)
-                zodiac: row?.zodiac ?? "",
-                lookingFor: row?.looking_for ?? "",
-                extra: row?.extra ?? "",
-
-                // Discovery preferences (saved now, filtering later)
-                interestedIn: row?.interested_in ?? "",
-                prefAgeMin: row?.pref_age_min ?? 18,
-                prefAgeMax: row?.pref_age_max ?? 100
-
-            });
-        }
-    );
-});
-
-/* ================= DISCOVER API (Homepage Karten) ================= */
-// Liefert Profile von ANDEREN Usern (nicht der eingeloggte User)
-// Nur User mit mindestens 1 Foto (Pflichtfoto) werden zurückgegeben
-app.get("/api/discover", requireLogin, (req, res) => {
-  const me = req.session.userId;
-
-  db.all(
-    `SELECT
-        u.id AS userId,
-        u.name,
-        u.age,
-        u.gender,              -- NEW: needed for homepage filtering
-        p.bio,
-        p.photos
-     FROM users u
-     JOIN profiles p ON p.user_id = u.id
-     WHERE u.id != ?
-     ORDER BY p.updated_at DESC`,
-
-    [me],
-    (err, rows) => {
-      if (err) {
-        console.error("DB ERROR:", err.message);
-        return res.status(500).json({ message: "DB error" });
-      }
-
-      // photos ist als JSON-String gespeichert -> in Array umwandeln
-      const profiles = (rows || [])
-        .map((r) => {
-          let photosArr = [];
-          try {
-            photosArr = JSON.parse(r.photos || "[]");
-          } catch {
-            photosArr = [];
-          }
-
-          // Normalisieren: nur Strings behalten, leere entfernen
-          photosArr = photosArr.filter((x) => typeof x === "string" && x.trim().length > 0);
-
-          return {
-            id: `u_${r.userId}`,
-            name: r.name || "",
-            age: r.age || "",
-            gender: r.gender || "",         // NEW: needed for filtering
-            bio: (r.bio || "").trim(),
-            photos: photosArr
-          };
-
-        })
-        // Pflicht: mindestens 1 Foto, sonst nicht anzeigen
-        .filter((p) => p.photos.length >= 1);
-
-      return res.json({ profiles });
-    }
-  );
-});
-
-
-// CREATE/UPSERT PROFILE (wird von create-profile.js genutzt)
-app.post("/api/profile", requireLogin, (req, res) => {
-    const {
-      name,
-      age,
-      gender,
-      location,
-      bio = "",
-      hobbies = "",
-
-      // New optional fields (homepage edit)
-      zodiac = "",
-      lookingFor = "",
-      extra = "",
-
-      // Discovery preferences
-      interestedIn = "",
-      prefAgeMin = 18,
-      prefAgeMax = 100
-    } = req.body;
-
-    const userId = req.session.userId;
-
-    if (!name || !age || !gender || !location) {
-        return res.status(400).json({ message: "Missing fields" });
-    }
-
-    if (Number(age) < 18) {
-        return res.status(400).json({ message: "User must be at least 18" });
-    }
-
-    // 1) Basisdaten im users-Table updaten (damit Login immer alles hat)
-    db.run(
-        `UPDATE users
-         SET name = ?, age = ?, gender = ?, location = ?
-         WHERE id = ?`,
-        [name, Number(age), gender, location, userId],
-        (err) => {
-            if (err) {
-                console.error("DB ERROR:", err.message);
-                return res.status(500).json({ message: "DB error" });
-            }
-
-            // 2) profiles-Eintrag anlegen/aktualisieren
-            db.run(
-                `INSERT INTO profiles (
-                    user_id, bio, hobbies,
-                    zodiac, looking_for, extra,
-                    interested_in, pref_age_min, pref_age_max
-                 )
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                 ON CONFLICT(user_id) DO UPDATE SET
-                   bio = excluded.bio,
-                   hobbies = excluded.hobbies,
-                   zodiac = excluded.zodiac,
-                   looking_for = excluded.looking_for,
-                   extra = excluded.extra,
-                   interested_in = excluded.interested_in,
-                   pref_age_min = excluded.pref_age_min,
-                   pref_age_max = excluded.pref_age_max,
-                   updated_at = datetime('now')`,
-                [
-                  userId,
-                  bio,
-                  hobbies,
-                  zodiac,
-                  lookingFor,
-                  extra,
-                  interestedIn,
-                  Number(prefAgeMin),
-                  Number(prefAgeMax)
-                ],
-
-                (err2) => {
-                    if (err2) {
-                        console.error("DB ERROR:", err2.message);
-                        return res.status(500).json({ message: "DB error" });
-                    }
-
-                    return res.json({ message: "✅ Profile saved!" });
-                }
-            );
-        }
-    );
-});
-
-// LOGIN
 app.post("/api/login", (req, res) => {
     const { email, password } = req.body;
 
-    db.get(
-        "SELECT * FROM users WHERE email = ?",
-        [email],
-        async (err, user) => {
-            if (!user) {
-                return res.status(401).json({ message: "Invalid credentials" });
-            }
-
-            const ok = await bcrypt.compare(password, user.password);
-            if (!ok) {
-                return res.status(401).json({ message: "Invalid credentials" });
-            }
-
-            req.session.userId = user.id;
-
-            db.get(
-                "SELECT user_id FROM profiles WHERE user_id = ?",
-                [user.id],
-                (err2, row) => {
-                    if (err2) {
-                        console.error("DB ERROR:", err2.message);
-                        return res.status(500).json({ message: "DB error" });
-                    }
-
-                    const needsProfile = !row;
-                    res.json({ message: "Login successful", needsProfile });
-                }
-            );
-
+    db.get("SELECT * FROM users WHERE email = ?", [email], async (err, user) => {
+        if (err) {
+            console.error("DB ERROR:", err.message);
+            return res.status(500).json({ message: "DB error" });
         }
-    );
+        if (!user) return res.status(401).json({ message: "Invalid credentials" });
+
+        const ok = await bcrypt.compare(password, user.password);
+        if (!ok) return res.status(401).json({ message: "Invalid credentials" });
+
+        req.session.userId = user.id;
+
+        db.get("SELECT user_id FROM profiles WHERE user_id = ?", [user.id], (err2, row) => {
+            if (err2) {
+                console.error("DB ERROR:", err2.message);
+                return res.status(500).json({ message: "DB error" });
+            }
+            const needsProfile = !row;
+            res.json({ message: "Login successful", needsProfile });
+        });
+    });
 });
 
-// LOGOUT
 app.post("/api/logout", (req, res) => {
     req.session.destroy(() => {
         res.clearCookie("connect.sid");
@@ -516,201 +278,339 @@ app.post("/api/logout", (req, res) => {
     });
 });
 
-// DELETE ACCOUNT (löscht User + Profil + Upload-Files)
-app.delete("/api/account", requireLogin, (req, res) => {
-  const userId = req.session.userId;
+/* ================= PROFILE API ================= */
+app.post("/api/profile/skip", requireLogin, (req, res) => {
+    const userId = req.session.userId;
 
-  // 1) Fotos holen (damit wir die Dateien von Disk löschen können)
-  db.get("SELECT photos FROM profiles WHERE user_id = ?", [userId], (err, row) => {
-    if (err) {
-      console.error("DB ERROR:", err.message);
-      return res.status(500).json({ message: "DB error" });
-    }
-
-    let photos = [];
-    try { photos = JSON.parse(row?.photos || "[]"); } catch { photos = []; }
-
-    // 2) User löschen (profiles wird durch ON DELETE CASCADE automatisch mitgelöscht)
-    db.run("DELETE FROM users WHERE id = ?", [userId], (err2) => {
-      if (err2) {
-        console.error("DB ERROR:", err2.message);
-        return res.status(500).json({ message: "DB error" });
-      }
-
-      // 3) Upload-Dateien löschen (best-effort)
-      try {
-        photos
-          .filter((p) => typeof p === "string" && p.startsWith("/uploads/"))
-          .forEach((p) => {
-            const safePath = path.join(__dirname, p.replace("/uploads/", "uploads/"));
-            if (fs.existsSync(safePath)) fs.unlinkSync(safePath);
-          });
-      } catch (e) {
-        // wenn File-Delete fehlschlägt -> Account ist trotzdem weg (DB ist wichtiger)
-      }
-
-      // 4) Session löschen wie Logout
-      req.session.destroy(() => {
-        res.clearCookie("connect.sid");
-        return res.json({ message: "Account deleted" });
-      });
-    });
-  });
+    db.run(
+        `INSERT INTO profiles (user_id)
+     VALUES (?)
+     ON CONFLICT(user_id) DO NOTHING`,
+        [userId],
+        (err) => {
+            if (err) {
+                console.error("DB ERROR:", err.message);
+                return res.status(500).json({ message: "DB error" });
+            }
+            res.json({ message: "Skipped" });
+        }
+    );
 });
 
+app.get("/api/profile", requireLogin, (req, res) => {
+    const userId = req.session.userId;
+
+    db.get(
+        `SELECT
+      u.name, u.age, u.gender, u.location,
+      p.bio, p.hobbies,
+      p.zodiac, p.looking_for, p.extra,
+      p.interested_in, p.pref_age_min, p.pref_age_max
+     FROM users u
+     LEFT JOIN profiles p ON p.user_id = u.id
+     WHERE u.id = ?`,
+        [userId],
+        (err, row) => {
+            if (err) {
+                console.error("DB ERROR:", err.message);
+                return res.status(500).json({ message: "DB error" });
+            }
+
+            res.json({
+                name: row?.name ?? "",
+                age: row?.age ?? "",
+                gender: row?.gender ?? "",
+                location: row?.location ?? "",
+                bio: row?.bio ?? "",
+                hobbies: row?.hobbies ?? "",
+                zodiac: row?.zodiac ?? "",
+                lookingFor: row?.looking_for ?? "",
+                extra: row?.extra ?? "",
+                interestedIn: row?.interested_in ?? "",
+                prefAgeMin: row?.pref_age_min ?? 18,
+                prefAgeMax: row?.pref_age_max ?? 100,
+            });
+        }
+    );
+});
+
+app.post("/api/profile", requireLogin, (req, res) => {
+    const {
+        name,
+        age,
+        gender,
+        location,
+        bio = "",
+        hobbies = "",
+        zodiac = "",
+        lookingFor = "",
+        extra = "",
+        interestedIn = "",
+        prefAgeMin = 18,
+        prefAgeMax = 100,
+    } = req.body;
+
+    const userId = req.session.userId;
+
+    if (!name || !age || !gender || !location) {
+        return res.status(400).json({ message: "Missing fields" });
+    }
+    if (Number(age) < 18) {
+        return res.status(400).json({ message: "User must be at least 18" });
+    }
+
+    db.run(
+        `UPDATE users SET name = ?, age = ?, gender = ?, location = ? WHERE id = ?`,
+        [name, Number(age), gender, location, userId],
+        (err) => {
+            if (err) {
+                console.error("DB ERROR:", err.message);
+                return res.status(500).json({ message: "DB error" });
+            }
+
+            db.run(
+                `INSERT INTO profiles (
+          user_id, bio, hobbies,
+          zodiac, looking_for, extra,
+          interested_in, pref_age_min, pref_age_max
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET
+          bio = excluded.bio,
+          hobbies = excluded.hobbies,
+          zodiac = excluded.zodiac,
+          looking_for = excluded.looking_for,
+          extra = excluded.extra,
+          interested_in = excluded.interested_in,
+          pref_age_min = excluded.pref_age_min,
+          pref_age_max = excluded.pref_age_max,
+          updated_at = datetime('now')`,
+                [
+                    userId,
+                    bio,
+                    hobbies,
+                    zodiac,
+                    lookingFor,
+                    extra,
+                    interestedIn,
+                    Number(prefAgeMin),
+                    Number(prefAgeMax),
+                ],
+                (err2) => {
+                    if (err2) {
+                        console.error("DB ERROR:", err2.message);
+                        return res.status(500).json({ message: "DB error" });
+                    }
+                    res.json({ message: "✅ Profile saved!" });
+                }
+            );
+        }
+    );
+});
+
+/* ================= DISCOVER API (Homepage Karten) ================= */
+app.get("/api/discover", requireLogin, (req, res) => {
+    const me = req.session.userId;
+
+    db.all(
+        `SELECT
+      u.id AS userId,
+      u.name,
+      u.age,
+      u.gender,
+      p.bio,
+      p.photos
+     FROM users u
+     JOIN profiles p ON p.user_id = u.id
+     WHERE u.id != ?
+     ORDER BY p.updated_at DESC`,
+        [me],
+        (err, rows) => {
+            if (err) {
+                console.error("DB ERROR:", err.message);
+                return res.status(500).json({ message: "DB error" });
+            }
+
+            const profiles = (rows || [])
+                .map((r) => {
+                    let photosArr = [];
+                    try {
+                        photosArr = JSON.parse(r.photos || "[]");
+                    } catch {
+                        photosArr = [];
+                    }
+
+                    photosArr = photosArr.filter((x) => typeof x === "string" && x.trim().length > 0);
+
+                    return {
+                        id: `u_${r.userId}`,
+                        name: r.name || "",
+                        age: r.age || "",
+                        gender: r.gender || "",
+                        bio: (r.bio || "").trim(),
+                        photos: photosArr,
+                    };
+                })
+                .filter((p) => p.photos.length >= 1);
+
+            res.json({ profiles });
+        }
+    );
+});
+
+/* ================= DELETE ACCOUNT ================= */
+app.delete("/api/account", requireLogin, (req, res) => {
+    const userId = req.session.userId;
+
+    db.get("SELECT photos FROM profiles WHERE user_id = ?", [userId], (err, row) => {
+        if (err) {
+            console.error("DB ERROR:", err.message);
+            return res.status(500).json({ message: "DB error" });
+        }
+
+        let photos = [];
+        try { photos = JSON.parse(row?.photos || "[]"); } catch { photos = []; }
+
+        db.run("DELETE FROM users WHERE id = ?", [userId], (err2) => {
+            if (err2) {
+                console.error("DB ERROR:", err2.message);
+                return res.status(500).json({ message: "DB error" });
+            }
+
+            try {
+                photos
+                    .filter((p) => typeof p === "string" && p.startsWith("/uploads/"))
+                    .forEach((p) => {
+                        const safePath = path.join(__dirname, p.replace("/uploads/", "uploads/"));
+                        if (fs.existsSync(safePath)) fs.unlinkSync(safePath);
+                    });
+            } catch {}
+
+            req.session.destroy(() => {
+                res.clearCookie("connect.sid");
+                res.json({ message: "Account deleted" });
+            });
+        });
+    });
+});
 
 /* ================= PHOTO API (Pflichtfoto) ================= */
-
-// Foto hochladen/ersetzen -> wird als profiles.photos[0] gespeichert
 app.post("/api/photos/main", requireLogin, upload.single("photo"), (req, res) => {
-  const userId = req.session.userId;
+    const userId = req.session.userId;
+    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
-  if (!req.file) {
-    return res.status(400).json({ message: "No file uploaded" });
-  }
+    const fileUrl = `/uploads/${req.file.filename}`;
 
-  const fileUrl = `/uploads/${req.file.filename}`;
+    db.get("SELECT photos FROM profiles WHERE user_id = ?", [userId], (err, row) => {
+        if (err) return res.status(500).json({ message: "DB error" });
 
-  db.get("SELECT photos FROM profiles WHERE user_id = ?", [userId], (err, row) => {
-    if (err) return res.status(500).json({ message: "DB error" });
+        let photos = [];
+        try { photos = JSON.parse(row?.photos || "[]"); } catch { photos = []; }
 
-    let photos = [];
-    try { photos = JSON.parse(row?.photos || "[]"); } catch { photos = []; }
+        photos[0] = fileUrl;
+        photos = photos.slice(0, 2);
 
-    photos[0] = fileUrl;         // Pflichtfoto setzen
-    photos = photos.slice(0, 2); // später max 2 (für später vorbereitet)
-
-    db.run(
-      "UPDATE profiles SET photos = ?, updated_at = datetime('now') WHERE user_id = ?",
-      [JSON.stringify(photos), userId],
-      (err2) => {
-        if (err2) return res.status(500).json({ message: "DB error" });
-        return res.json({ message: "Main photo saved", photos });
-      }
-    );
-  });
+        db.run(
+            "UPDATE profiles SET photos = ?, updated_at = datetime('now') WHERE user_id = ?",
+            [JSON.stringify(photos), userId],
+            (err2) => {
+                if (err2) return res.status(500).json({ message: "DB error" });
+                res.json({ message: "Main photo saved", photos });
+            }
+        );
+    });
 });
 
-// Zweites Foto hochladen/ersetzen -> wird als profiles.photos[1] gespeichert (optional)
 app.post("/api/photos/second", requireLogin, upload.single("photo"), (req, res) => {
-  const userId = req.session.userId;
+    const userId = req.session.userId;
+    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
-  if (!req.file) {
-    return res.status(400).json({ message: "No file uploaded" });
-  }
+    const fileUrl = `/uploads/${req.file.filename}`;
 
-  const fileUrl = `/uploads/${req.file.filename}`;
+    db.get("SELECT photos FROM profiles WHERE user_id = ?", [userId], (err, row) => {
+        if (err) return res.status(500).json({ message: "DB error" });
 
-  db.get("SELECT photos FROM profiles WHERE user_id = ?", [userId], (err, row) => {
-    if (err) return res.status(500).json({ message: "DB error" });
+        let photos = [];
+        try { photos = JSON.parse(row?.photos || "[]"); } catch { photos = []; }
 
-    let photos = [];
-    try { photos = JSON.parse(row?.photos || "[]"); } catch { photos = []; }
+        if (!photos[0]) return res.status(400).json({ message: "Please upload Picture 1 first." });
 
-    // Sicherheit: main muss existieren, bevor second gesetzt wird
-    if (!photos[0]) {
-      return res.status(400).json({ message: "Please upload Picture 1 first." });
-    }
+        photos[1] = fileUrl;
+        photos = photos.slice(0, 2);
 
-    photos[1] = fileUrl;         // optionales Foto setzen
-    photos = photos.slice(0, 2);
-
-    db.run(
-      "UPDATE profiles SET photos = ?, updated_at = datetime('now') WHERE user_id = ?",
-      [JSON.stringify(photos), userId],
-      (err2) => {
-        if (err2) return res.status(500).json({ message: "DB error" });
-        return res.json({ message: "Second photo saved", photos });
-      }
-    );
-  });
+        db.run(
+            "UPDATE profiles SET photos = ?, updated_at = datetime('now') WHERE user_id = ?",
+            [JSON.stringify(photos), userId],
+            (err2) => {
+                if (err2) return res.status(500).json({ message: "DB error" });
+                res.json({ message: "Second photo saved", photos });
+            }
+        );
+    });
 });
 
-
-// Fotos holen (für Manage Pictures UI)
 app.get("/api/photos", requireLogin, (req, res) => {
-  const userId = req.session.userId;
+    const userId = req.session.userId;
 
-  db.get("SELECT photos FROM profiles WHERE user_id = ?", [userId], (err, row) => {
-    if (err) return res.status(500).json({ message: "DB error" });
+    db.get("SELECT photos FROM profiles WHERE user_id = ?", [userId], (err, row) => {
+        if (err) return res.status(500).json({ message: "DB error" });
 
-    let photos = [];
-    try { photos = JSON.parse(row?.photos || "[]"); } catch { photos = []; }
+        let photos = [];
+        try { photos = JSON.parse(row?.photos || "[]"); } catch { photos = []; }
 
-    return res.json({ photos });
-  });
+        res.json({ photos });
+    });
 });
 
-// Foto löschen: /api/photos/0 oder /api/photos/1
 app.delete("/api/photos/:idx", requireLogin, (req, res) => {
-  const userId = req.session.userId;
-  const idx = Number(req.params.idx);
+    const userId = req.session.userId;
+    const idx = Number(req.params.idx);
 
-  if (![0, 1].includes(idx)) {
-    return res.status(400).json({ message: "Invalid photo index" });
-  }
-
-  db.get("SELECT photos FROM profiles WHERE user_id = ?", [userId], (err, row) => {
-    if (err) return res.status(500).json({ message: "DB error" });
-
-    let photos = [];
-    try { photos = JSON.parse(row?.photos || "[]"); } catch { photos = []; }
-
-    // Wenn dieses Foto gar nicht existiert -> ok, nichts zu tun
-    if (!photos[idx]) {
-      return res.json({ photos });
+    if (![0, 1].includes(idx)) {
+        return res.status(400).json({ message: "Invalid photo index" });
     }
 
-    // Regel: mind. 1 Foto muss bleiben
-    const existingCount = photos.filter(Boolean).length;
-    if (existingCount <= 1) {
-      return res.status(400).json({ message: "You must keep at least 1 picture." });
-    }
+    db.get("SELECT photos FROM profiles WHERE user_id = ?", [userId], (err, row) => {
+        if (err) return res.status(500).json({ message: "DB error" });
 
-    // Datei optional auch von Disk entfernen
-    try {
-      const filePath = path.join(__dirname, photos[idx]); // photos[idx] ist "/uploads/..."
-      // path.join mit "/uploads/.." würde rooten, daher normalize:
-      const safePath = path.join(__dirname, photos[idx].replace("/uploads/", "uploads/"));
-      if (fs.existsSync(safePath)) fs.unlinkSync(safePath);
-    } catch (e) {
-      // wenn löschen fehlschlägt -> DB trotzdem updaten
-    }
+        let photos = [];
+        try { photos = JSON.parse(row?.photos || "[]"); } catch { photos = []; }
 
-    // Entfernen:
-    photos[idx] = null;
+        if (!photos[idx]) return res.json({ photos });
 
-    // Wenn main gelöscht wurde und second existiert -> nach vorne schieben
-    if (idx === 0 && photos[1]) {
-      photos[0] = photos[1];
-      photos[1] = null;
-    }
+        const existingCount = photos.filter(Boolean).length;
+        if (existingCount <= 1) {
+            return res.status(400).json({ message: "You must keep at least 1 picture." });
+        }
 
-    // clean auf Länge 2
-    const cleaned = [photos[0] || null, photos[1] || null].filter(v => v !== null);
+        try {
+            const safePath = path.join(__dirname, photos[idx].replace("/uploads/", "uploads/"));
+            if (fs.existsSync(safePath)) fs.unlinkSync(safePath);
+        } catch {}
 
-    db.run(
-      "UPDATE profiles SET photos = ?, updated_at = datetime('now') WHERE user_id = ?",
-      [JSON.stringify(cleaned), userId],
-      (err2) => {
-        if (err2) return res.status(500).json({ message: "DB error" });
-        return res.json({ photos: cleaned });
-      }
-    );
-  });
-});
+        photos[idx] = null;
 
+        if (idx === 0 && photos[1]) {
+            photos[0] = photos[1];
+            photos[1] = null;
+        }
 
-/* ================= START ================= */
-app.listen(PORT, () => {
-    console.log(`✅ Server running at http://localhost:${PORT}`);
+        const cleaned = [photos[0] || null, photos[1] || null].filter((v) => v !== null);
+
+        db.run(
+            "UPDATE profiles SET photos = ?, updated_at = datetime('now') WHERE user_id = ?",
+            [JSON.stringify(cleaned), userId],
+            (err2) => {
+                if (err2) return res.status(500).json({ message: "DB error" });
+                res.json({ photos: cleaned });
+            }
+        );
+    });
 });
 
 /* ================= PROMPTS API ================= */
-
-// Alle Prompts laden
-app.get('/api/prompts', requireLogin, (req, res) => {
-    db.all('SELECT * FROM prompts', [], (err, rows) => {
+app.get("/api/prompts", requireLogin, (req, res) => {
+    db.all("SELECT * FROM prompts", [], (err, rows) => {
         if (err) {
             console.error("DB ERROR:", err.message);
             return res.status(500).json({ message: "DB error" });
@@ -719,10 +619,8 @@ app.get('/api/prompts', requireLogin, (req, res) => {
     });
 });
 
-
-// Prompt-Antwort speichern / updaten
-app.post('/api/prompts/answer', requireLogin, (req, res) => {
-    const userId = req.session.userId;   // 🔑 WICHTIG
+app.post("/api/prompts/answer", requireLogin, (req, res) => {
+    const userId = req.session.userId;
     const { prompt_id, answer } = req.body;
 
     if (!prompt_id || !answer) {
@@ -731,59 +629,193 @@ app.post('/api/prompts/answer', requireLogin, (req, res) => {
 
     db.run(
         `
-        INSERT INTO user_prompt_answers (user_id, prompt_id, answer)
-        VALUES (?, ?, ?)
-        ON CONFLICT(user_id, prompt_id)
-        DO UPDATE SET answer = excluded.answer
-        `,
+      INSERT INTO user_prompt_answers (user_id, prompt_id, answer)
+      VALUES (?, ?, ?)
+      ON CONFLICT(user_id, prompt_id)
+      DO UPDATE SET answer = excluded.answer
+    `,
         [userId, prompt_id, answer],
         function (err) {
             if (err) {
                 console.error("DB ERROR:", err.message);
                 return res.status(500).json({ message: "DB error" });
             }
-
             res.json({ success: true });
         }
     );
 });
 
-
-// Prompt-Antwort löschen
-app.delete('/api/prompts/answer/:promptId', requireLogin, (req, res) => {
+app.delete("/api/prompts/answer/:promptId", requireLogin, (req, res) => {
     const userId = req.session.userId;
     const promptId = Number(req.params.promptId);
 
     db.run(
-        `DELETE FROM user_prompt_answers
-         WHERE user_id = ? AND prompt_id = ?`,
+        `DELETE FROM user_prompt_answers WHERE user_id = ? AND prompt_id = ?`,
         [userId, promptId],
         function (err) {
             if (err) {
                 console.error("DB ERROR:", err.message);
                 return res.status(500).json({ message: "DB error" });
             }
-
             res.json({ deleted: true });
         }
     );
 });
-// Gespeicherte Prompt-Antworten eines Users holen
-app.get('/api/prompts/answers', requireLogin, (req, res) => {
+
+app.get("/api/prompts/answers", requireLogin, (req, res) => {
     const userId = req.session.userId;
 
     db.all(
-        `SELECT prompt_id, answer
-         FROM user_prompt_answers
-         WHERE user_id = ?`,
+        `SELECT prompt_id, answer FROM user_prompt_answers WHERE user_id = ?`,
         [userId],
         (err, rows) => {
             if (err) {
                 console.error("DB ERROR:", err.message);
                 return res.status(500).json({ message: "DB error" });
             }
-
             res.json(rows);
         }
     );
+});
+
+/* ================= WINGMEN / BEST FRIENDS API ================= */
+
+// Search users (for adding as wingman)
+app.get("/api/users/search", requireLogin, (req, res) => {
+    const me = req.session.userId;
+    const q = String(req.query.q || "").trim();
+
+    if (!q) return res.json({ users: [] });
+
+    // basic protection against wildcards; still allows partial search
+    const like = `%${q.replaceAll("%", "").replaceAll("_", "")}%`;
+
+    db.all(
+        `
+    SELECT id, name, age, gender, location
+    FROM users
+    WHERE id != ?
+      AND (name LIKE ? OR email LIKE ?)
+    ORDER BY name ASC
+    LIMIT 20
+    `,
+        [me, like, like],
+        (err, rows) => {
+            if (err) {
+                console.error("DB ERROR:", err.message);
+                return res.status(500).json({ message: "DB error" });
+            }
+            res.json({ users: rows || [] });
+        }
+    );
+});
+
+// Get my wingmen + my best friends
+app.get("/api/wingmen", requireLogin, (req, res) => {
+    const me = req.session.userId;
+
+    // Wingmen = users I chose
+    const wingmenSql = `
+    SELECT u.id, u.name, u.age, u.gender, u.location
+    FROM wingman_links w
+    JOIN users u ON u.id = w.wingman_user_id
+    WHERE w.user_id = ?
+    ORDER BY w.created_at DESC
+  `;
+
+    // Best Friends = users who chose me
+    const bestFriendsSql = `
+    SELECT u.id, u.name, u.age, u.gender, u.location
+    FROM wingman_links w
+    JOIN users u ON u.id = w.user_id
+    WHERE w.wingman_user_id = ?
+    ORDER BY w.created_at DESC
+  `;
+
+    db.all(wingmenSql, [me], (err1, wingmen) => {
+        if (err1) {
+            console.error("DB ERROR:", err1.message);
+            return res.status(500).json({ message: "DB error" });
+        }
+
+        db.all(bestFriendsSql, [me], (err2, bestFriends) => {
+            if (err2) {
+                console.error("DB ERROR:", err2.message);
+                return res.status(500).json({ message: "DB error" });
+            }
+
+            res.json({
+                wingmen: wingmen || [],
+                bestFriends: bestFriends || [],
+            });
+        });
+    });
+});
+
+// Add wingman
+app.post("/api/wingmen", requireLogin, (req, res) => {
+    const me = req.session.userId;
+    const wingmanUserId = Number(req.body.wingmanUserId);
+
+    if (!wingmanUserId || Number.isNaN(wingmanUserId)) {
+        return res.status(400).json({ message: "Invalid wingmanUserId" });
+    }
+    if (wingmanUserId === me) {
+        return res.status(400).json({ message: "You cannot add yourself as wingman" });
+    }
+
+    // ensure user exists
+    db.get("SELECT id FROM users WHERE id = ?", [wingmanUserId], (err, row) => {
+        if (err) {
+            console.error("DB ERROR:", err.message);
+            return res.status(500).json({ message: "DB error" });
+        }
+        if (!row) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        db.run(
+            `
+      INSERT INTO wingman_links (user_id, wingman_user_id)
+      VALUES (?, ?)
+      ON CONFLICT(user_id, wingman_user_id) DO NOTHING
+      `,
+            [me, wingmanUserId],
+            (err2) => {
+                if (err2) {
+                    console.error("DB ERROR:", err2.message);
+                    return res.status(500).json({ message: "DB error" });
+                }
+                return res.json({ message: "Wingman added" });
+            }
+        );
+    });
+});
+
+// Remove wingman
+app.delete("/api/wingmen/:wingmanUserId", requireLogin, (req, res) => {
+    const me = req.session.userId;
+    const wingmanUserId = Number(req.params.wingmanUserId);
+
+    if (!wingmanUserId || Number.isNaN(wingmanUserId)) {
+        return res.status(400).json({ message: "Invalid wingmanUserId" });
+    }
+
+    db.run(
+        `DELETE FROM wingman_links WHERE user_id = ? AND wingman_user_id = ?`,
+        [me, wingmanUserId],
+        (err) => {
+            if (err) {
+                console.error("DB ERROR:", err.message);
+                return res.status(500).json({ message: "DB error" });
+            }
+            return res.json({ message: "Wingman removed" });
+        }
+    );
+});
+
+
+/* ================= START (ALWAYS LAST) ================= */
+app.listen(PORT, () => {
+    console.log(`✅ Server running at http://localhost:${PORT}`);
 });
