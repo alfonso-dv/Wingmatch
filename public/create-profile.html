@@ -1,3 +1,4 @@
+<!-- create-profile.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -24,13 +25,26 @@
             position: relative;
         }
 
-        #skipBtn {
+                #skipBtn {
             position: absolute;
             top: 10px;
             right: 14px;
             font-weight: 700;
             color: #ff4d6d;
         }
+
+        /* NEW: Close-X for edit-mode (homepage) */
+        #closeBtn {
+            position: absolute;
+            top: 10px;
+            right: 14px;
+            font-weight: 800;
+            color: #ff4d6d;
+            text-decoration: none;
+            font-size: 20px;
+            line-height: 1;
+        }
+
     </style>
 </head>
 
@@ -38,14 +52,19 @@
 
 <div class="wm-card shadow p-4 my-4">
 
-    <!-- Skip -->
+    <!-- Skip (ONLY onboarding/register flow) -->
     <button id="skipBtn" type="button" class="btn btn-link">Skip</button>
+
+    <!-- NEW: Close X (ONLY homepage edit flow) -->
+    <button id="closeBtn" type="button" class="btn btn-link" style="display:none;">✕</button>
 
     <!-- Header -->
     <div class="text-center mb-3">
         <div style="font-weight:800;font-size:24px;color:#ff4d6d;">Wingmatch</div>
         <h4>Create Profile</h4>
-        <p class="text-muted small">You can skip and edit later.</p>
+
+        <!-- NEW: helper text gets removed in edit-mode via JS -->
+        <p id="helperText" class="text-muted small">You can skip and edit later.</p>
     </div>
 
     <form id="profileForm">
@@ -69,7 +88,14 @@
         <button type="button" class="btn btn-link text-danger clear-btn" data-target="bio">Clear</button>
 
         <input id="hobbies" class="form-control mb-1" placeholder="Hobbies (optional)">
+
         <button type="button" class="btn btn-link text-danger clear-btn" data-target="hobbies">Clear</button>
+
+        <!--  My Pictures Button (ONLY homepage edit-mode) -->
+        <button id="managePics" type="button" class="btn btn-link w-100 small fw-bold" style="display:none;">
+            My Pictures
+        </button>
+
 
         <!-- PROMPTS -->
         <div class="mt-3">

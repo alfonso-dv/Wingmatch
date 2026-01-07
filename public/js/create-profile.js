@@ -1,6 +1,46 @@
+//create-profile.js
 const form = document.getElementById("profileForm");
 const result = document.getElementById("result");
+
+// Buttons / UI (Skip = onboarding, Close/MyPictures = homepage edit)
 const skipBtn = document.getElementById("skipBtn");
+const closeBtn = document.getElementById("closeBtn");
+const managePics = document.getElementById("managePics");
+const helperText = document.getElementById("helperText");
+
+// Detect mode (?mode=edit means homepage edit)
+const params = new URLSearchParams(window.location.search);
+const isEditMode = params.get("mode") === "edit";
+
+// Apply UI differences WITHOUT touching onboarding flow
+if (isEditMode) {
+  // Homepage edit: show X, hide Skip, remove helper text, show My Pictures
+  if (skipBtn) skipBtn.style.display = "none";
+  if (closeBtn) closeBtn.style.display = "block";
+  if (helperText) helperText.textContent = "";
+  if (managePics) managePics.style.display = "block";
+} else {
+  // Onboarding/register: keep Skip + helper text, hide X + My Pictures
+  if (skipBtn) skipBtn.style.display = "block";
+  if (closeBtn) closeBtn.style.display = "none";
+  // helperText bleibt wie im HTML
+  if (managePics) managePics.style.display = "none";
+}
+
+// NEW: X closes and returns to homepage
+if (closeBtn) {
+  closeBtn.addEventListener("click", () => {
+    window.location.href = "/index";
+  });
+}
+
+// NEW: My Pictures opens manage-pictures page
+if (managePics) {
+  managePics.addEventListener("click", () => {
+    window.location.href = "/manage-pictures";
+  });
+}
+
 
 const prefAgeMin = document.getElementById("prefAgeMin");
 const prefAgeMax = document.getElementById("prefAgeMax");
