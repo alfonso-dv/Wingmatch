@@ -69,7 +69,8 @@
                 <button id="settingsBtn" class="icon-btn" title="Settings">⚙️</button>
 
                 <!-- Messages -->
-                <button class="icon-btn" title="Messages">💬</button>
+                <button id="messagesBtn" class="icon-btn" title="Messages">💬</button>
+
 
                 <button id="logoutBtn" class="icon-btn logout" title="Logout">Logout</button>
             </div>
@@ -191,6 +192,37 @@
         <button id="closeAddWingman" class="close-btn">Close</button>
     </div>
 </div>
+
+<!-- Messages / Matches Modal -->
+<div id="messagesModal" class="modal hidden">
+    <div class="modal-card">
+        <button id="closeMessagesX" class="close-x">✕</button>
+        <h2>Messages</h2>
+
+        <div class="chat-layout">
+            <!-- Matches list -->
+            <div class="chat-sidebar">
+                <div class="chat-sidebar-title">Your Matches</div>
+                <ul id="matchesList" class="search-results"></ul>
+            </div>
+
+            <!-- Chat panel -->
+            <div class="chat-panel">
+                <div id="chatHeader" class="chat-header">Select a match</div>
+
+                <div id="chatMessages" class="chat-messages"></div>
+
+                <div class="chat-input-row">
+                    <input id="chatInput" class="text-input" type="text" placeholder="Type a message..." />
+                    <button id="sendChatBtn" class="small-btn">Send</button>
+                </div>
+            </div>
+        </div>
+
+        <button id="closeMessages" class="close-btn">Close</button>
+    </div>
+</div>
+
 
 
 <script src="/js/app.js"></script>

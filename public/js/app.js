@@ -299,9 +299,29 @@ document.addEventListener("DOMContentLoaded", () => {
             if (action === ACTION.LIKE) card.style.transform = "translate(520px, 40px) rotate(18deg)";
             if (action === ACTION.NOPE) card.style.transform = "translate(-520px, 40px) rotate(-18deg)";
             if (action === ACTION.SUPER) card.style.transform = "translate(0px, -620px) rotate(0deg)";
+
             showToast(`${action} • ${profile.name}`);
+
+            // Send swipe to server (non-blocking)
+            (async () => {
+                try {
+                    const serverAction =
+                        action === ACTION.LIKE ? "LIKE" :
+                            action === ACTION.NOPE ? "NOPE" :
+                                action === ACTION.SUPER ? "SUPER" : null;
+
+                    if (!serverAction) return;
+
+                    const r = await sendSwipeToServer(profile, serverAction);
+                    if (r?.matched) showToast("It's a match! ✨");
+                } catch {
+                    // ignore network errors; UI already moved on
+                }
+            })();
+
             setTimeout(removeTop, 180);
         }
+
 
         function reset() {
             card.style.transition = "transform 180ms ease";
@@ -346,31 +366,49 @@ document.addEventListener("DOMContentLoaded", () => {
     // Buttons (Nope/Like/Super)
     // =========================
     if (onHome && nopeBtn) {
-        nopeBtn.addEventListener("click", () => {
+        nopeBtn.addEventListener("click", async () => {
             const p = topProfile();
             if (!p) return;
-            showToast(`${ACTION.NOPE} • ${p.name}`);
-            removeTop();
+
+            removeTop(); // UI first (fast)
+            try {
+                await sendSwipeToServer(p, "NOPE");
+            } catch (e) {
+                showToast(e.message || "Swipe failed");
+            }
         });
     }
 
     if (onHome && likeBtn) {
-        likeBtn.addEventListener("click", () => {
+        likeBtn.addEventListener("click", async () => {
             const p = topProfile();
             if (!p) return;
-            showToast(`${ACTION.LIKE} • ${p.name}`);
+
             removeTop();
+            try {
+                const r = await sendSwipeToServer(p, "LIKE");
+                if (r?.matched) showToast("It's a match! ✨");
+            } catch (e) {
+                showToast(e.message || "Swipe failed");
+            }
         });
     }
 
     if (onHome && superBtn) {
-        superBtn.addEventListener("click", () => {
+        superBtn.addEventListener("click", async () => {
             const p = topProfile();
             if (!p) return;
-            showToast(`${ACTION.SUPER} • ${p.name}`);
+
             removeTop();
+            try {
+                const r = await sendSwipeToServer(p, "SUPER");
+                if (r?.matched) showToast("It's a match! ⭐");
+            } catch (e) {
+                showToast(e.message || "Swipe failed");
+            }
         });
     }
+
 
     if (onHome && reloadBtn) {
         reloadBtn.addEventListener("click", () => {
@@ -607,6 +645,179 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+
+    // =========================
+// Messages / Matches / Chat
+// =========================
+    const messagesBtn = document.getElementById("messagesBtn");
+    const messagesModal = document.getElementById("messagesModal");
+    const closeMessages = document.getElementById("closeMessages");
+    const closeMessagesX = document.getElementById("closeMessagesX");
+
+    const matchesList = document.getElementById("matchesList");
+    const chatHeader = document.getElementById("chatHeader");
+    const chatMessages = document.getElementById("chatMessages");
+    const chatInput = document.getElementById("chatInput");
+    const sendChatBtn = document.getElementById("sendChatBtn");
+
+    let currentChatOtherId = null;
+    let myUserIdCache = null;
+
+    async function getMyUserId() {
+        if (myUserIdCache) return myUserIdCache;
+        try {
+            const res = await fetch("/debug-session");
+            const data = await res.json();
+            myUserIdCache = data?.userId || null;
+            return myUserIdCache;
+        } catch {
+            return null;
+        }
+    }
+
+    function openMessagesModal() {
+        if (!messagesModal) return;
+        messagesModal.classList.remove("hidden");
+        loadMatches();
+    }
+
+    function closeMessagesModal() {
+        if (!messagesModal) return;
+        messagesModal.classList.add("hidden");
+    }
+
+    if (messagesBtn) messagesBtn.addEventListener("click", openMessagesModal);
+    if (closeMessages) closeMessages.addEventListener("click", closeMessagesModal);
+    if (closeMessagesX) closeMessagesX.addEventListener("click", closeMessagesModal);
+
+    if (messagesModal) {
+        messagesModal.addEventListener("click", (e) => {
+            if (e.target === messagesModal) closeMessagesModal();
+        });
+    }
+
+    async function loadMatches() {
+        if (!matchesList) return;
+
+        matchesList.innerHTML = `<li class="search-result-item"><div class="search-result-name">Loading...</div></li>`;
+
+        try {
+            const res = await fetch("/api/matches");
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+                matchesList.innerHTML = `<li class="search-result-item"><div class="search-result-name">Failed to load matches</div></li>`;
+                return;
+            }
+
+            const matches = Array.isArray(data.matches) ? data.matches : [];
+            if (!matches.length) {
+                matchesList.innerHTML = `<li class="search-result-item"><div class="search-result-name">No matches yet</div></li>`;
+                return;
+            }
+
+            matchesList.innerHTML = matches.map(m => `
+      <li class="search-result-item" data-other-id="${m.otherId}">
+        <div class="search-result-top">
+          <div class="search-result-name">${escapeHtml(m.name || "Match")}</div>
+          <button class="small-btn">Chat</button>
+        </div>
+        <div class="search-result-sub">
+          ${escapeHtml(String(m.age ?? ""))}${m.gender ? " • " + escapeHtml(m.gender) : ""}
+        </div>
+      </li>
+    `).join("");
+
+            // Click a match to open chat
+            matchesList.querySelectorAll("[data-other-id]").forEach(item => {
+                item.addEventListener("click", async () => {
+                    const otherId = Number(item.getAttribute("data-other-id"));
+                    if (!otherId) return;
+                    currentChatOtherId = otherId;
+                    if (chatHeader) chatHeader.textContent = "Chat";
+                    await loadChat(otherId);
+                });
+            });
+
+        } catch {
+            matchesList.innerHTML = `<li class="search-result-item"><div class="search-result-name">Failed to load matches</div></li>`;
+        }
+    }
+
+    async function loadChat(otherId) {
+        if (!chatMessages) return;
+
+        chatMessages.innerHTML = "Loading...";
+        const me = await getMyUserId();
+
+        try {
+            const res = await fetch(`/api/chat/${otherId}`);
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+                chatMessages.innerHTML = escapeHtml(data.message || "Failed to load chat");
+                return;
+            }
+
+            const msgs = Array.isArray(data.messages) ? data.messages : [];
+
+            if (!msgs.length) {
+                chatMessages.innerHTML = `<div class="side-sub">No messages yet. Say hi 👋</div>`;
+                return;
+            }
+
+            chatMessages.innerHTML = msgs.map(m => `
+      <div class="msg ${m.sender_id === me ? "me" : ""}">
+        ${escapeHtml(m.text)}
+      </div>
+    `).join("");
+
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        } catch {
+            chatMessages.innerHTML = "Failed to load chat";
+        }
+    }
+
+    async function sendChat() {
+        const otherId = currentChatOtherId;
+        if (!otherId) {
+            showToast("Select a match first");
+            return;
+        }
+
+        const text = (chatInput?.value || "").trim();
+        if (!text) return;
+
+        if (chatInput) chatInput.value = "";
+
+        try {
+            const res = await fetch(`/api/chat/${otherId}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text })
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                showToast(data.message || "Send failed");
+                return;
+            }
+
+            await loadChat(otherId);
+        } catch {
+            showToast("Send failed");
+        }
+    }
+
+    if (sendChatBtn) sendChatBtn.addEventListener("click", sendChat);
+    if (chatInput) {
+        chatInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") sendChat();
+        });
+    }
+
+
     // =========================
     // Wingmen / Best Friends Lists
     // =========================
@@ -813,6 +1024,30 @@ document.addEventListener("DOMContentLoaded", () => {
             searchTimer = setTimeout(() => runWingmanSearch(q), 250);
         });
     }
+
+    function parseServerUserId(profileId) {
+        // real users come like "u_12"
+        if (!profileId || typeof profileId !== "string") return null;
+        if (!profileId.startsWith("u_")) return null;
+        const n = Number(profileId.slice(2));
+        return Number.isNaN(n) ? null : n;
+    }
+
+    async function sendSwipeToServer(profile, action) {
+        const toUserId = parseServerUserId(profile?.id);
+        if (!toUserId) return { matched: false }; // seed profiles won't be in DB
+
+        const res = await fetch("/api/swipes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ toUserId, action })
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || "Swipe failed");
+        return data;
+    }
+
 
     // Load lists on page open (safe even if lists don't exist on other pages)
     refreshWingmanLists();

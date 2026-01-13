@@ -105,6 +105,44 @@ db.serialize(() => {
   )
 `);
 
+    // --- MATCHING / CHAT TABLES ---
+
+    db.run(`
+        CREATE TABLE IF NOT EXISTS swipes (
+                                              from_user_id INTEGER NOT NULL,
+                                              to_user_id INTEGER NOT NULL,
+                                              action TEXT NOT NULL CHECK (action IN ('LIKE','NOPE','SUPER')),
+            created_at TEXT DEFAULT (datetime('now')),
+            PRIMARY KEY (from_user_id, to_user_id),
+            FOREIGN KEY (from_user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (to_user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+    `);
+
+    db.run(`
+        CREATE TABLE IF NOT EXISTS matches (
+                                               user1_id INTEGER NOT NULL,
+                                               user2_id INTEGER NOT NULL,
+                                               created_at TEXT DEFAULT (datetime('now')),
+            PRIMARY KEY (user1_id, user2_id),
+            FOREIGN KEY (user1_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (user2_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+    `);
+
+    db.run(`
+        CREATE TABLE IF NOT EXISTS messages (
+                                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                match_user1 INTEGER NOT NULL,
+                                                match_user2 INTEGER NOT NULL,
+                                                sender_id INTEGER NOT NULL,
+                                                text TEXT NOT NULL,
+                                                created_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+    `);
+
+
 
     // Safe add columns for older DBs
     function addColumnSafe(sql) {
@@ -413,18 +451,23 @@ app.get("/api/discover", requireLogin, (req, res) => {
     const me = req.session.userId;
 
     db.all(
-        `SELECT
-      u.id AS userId,
-      u.name,
-      u.age,
-      u.gender,
-      p.bio,
-      p.photos
-     FROM users u
-     JOIN profiles p ON p.user_id = u.id
-     WHERE u.id != ?
-     ORDER BY p.updated_at DESC`,
-        [me],
+        `
+            SELECT
+                u.id AS userId,
+                u.name,
+                u.age,
+                u.gender,
+                p.bio,
+                p.photos
+            FROM users u
+                     JOIN profiles p ON p.user_id = u.id
+            WHERE u.id != ?
+      AND u.id NOT IN (
+        SELECT to_user_id FROM swipes WHERE from_user_id = ?
+      )
+            ORDER BY p.updated_at DESC
+        `,
+        [me, me],
         (err, rows) => {
             if (err) {
                 console.error("DB ERROR:", err.message);
@@ -434,12 +477,7 @@ app.get("/api/discover", requireLogin, (req, res) => {
             const profiles = (rows || [])
                 .map((r) => {
                     let photosArr = [];
-                    try {
-                        photosArr = JSON.parse(r.photos || "[]");
-                    } catch {
-                        photosArr = [];
-                    }
-
+                    try { photosArr = JSON.parse(r.photos || "[]"); } catch { photosArr = []; }
                     photosArr = photosArr.filter((x) => typeof x === "string" && x.trim().length > 0);
 
                     return {
@@ -813,6 +851,196 @@ app.delete("/api/wingmen/:wingmanUserId", requireLogin, (req, res) => {
         }
     );
 });
+
+// ============================
+// MATCHING API
+// ============================
+
+// POST swipe (LIKE/NOPE/SUPER). Creates match if mutual like.
+app.post("/api/swipes", requireLogin, (req, res) => {
+    const me = req.session.userId;
+    const { toUserId, action } = req.body;
+
+    const other = Number(toUserId);
+    const act = String(action || "").toUpperCase();
+
+    if (!other || Number.isNaN(other)) return res.status(400).json({ message: "Invalid toUserId" });
+    if (other === me) return res.status(400).json({ message: "Cannot swipe yourself" });
+    if (!["LIKE", "NOPE", "SUPER"].includes(act)) return res.status(400).json({ message: "Invalid action" });
+
+    // Upsert swipe
+    db.run(
+        `
+    INSERT INTO swipes (from_user_id, to_user_id, action)
+    VALUES (?, ?, ?)
+    ON CONFLICT(from_user_id, to_user_id) DO UPDATE SET
+      action = excluded.action,
+      created_at = datetime('now')
+    `,
+        [me, other, act],
+        (err) => {
+            if (err) {
+                console.error("DB ERROR:", err.message);
+                return res.status(500).json({ message: "DB error" });
+            }
+
+            // Only LIKE/SUPER can create match
+            if (act === "NOPE") return res.json({ ok: true, matched: false });
+
+            // Check if the other user already liked me
+            db.get(
+                `
+        SELECT action FROM swipes
+        WHERE from_user_id = ? AND to_user_id = ?
+          AND action IN ('LIKE','SUPER')
+        `,
+                [other, me],
+                (err2, row) => {
+                    if (err2) {
+                        console.error("DB ERROR:", err2.message);
+                        return res.status(500).json({ message: "DB error" });
+                    }
+
+                    if (!row) return res.json({ ok: true, matched: false });
+
+                    // Create match (store ordered pair so one row per match)
+                    const user1 = Math.min(me, other);
+                    const user2 = Math.max(me, other);
+
+                    db.run(
+                        `
+            INSERT INTO matches (user1_id, user2_id)
+            VALUES (?, ?)
+            ON CONFLICT(user1_id, user2_id) DO NOTHING
+            `,
+                        [user1, user2],
+                        (err3) => {
+                            if (err3) {
+                                console.error("DB ERROR:", err3.message);
+                                return res.status(500).json({ message: "DB error" });
+                            }
+
+                            // Return match + basic info for UI
+                            db.get(
+                                `SELECT id, name, age FROM users WHERE id = ?`,
+                                [other],
+                                (err4, u) => {
+                                    if (err4) return res.json({ ok: true, matched: true });
+                                    return res.json({ ok: true, matched: true, matchUser: u || null });
+                                }
+                            );
+                        }
+                    );
+                }
+            );
+        }
+    );
+});
+
+// Get my matches list
+app.get("/api/matches", requireLogin, (req, res) => {
+    const me = req.session.userId;
+
+    db.all(
+        `
+    SELECT
+      CASE WHEN m.user1_id = ? THEN m.user2_id ELSE m.user1_id END AS otherId,
+      u.name, u.age, u.gender, u.location,
+      m.user1_id, m.user2_id, m.created_at
+    FROM matches m
+    JOIN users u ON u.id = (CASE WHEN m.user1_id = ? THEN m.user2_id ELSE m.user1_id END)
+    WHERE m.user1_id = ? OR m.user2_id = ?
+    ORDER BY m.created_at DESC
+    `,
+        [me, me, me, me],
+        (err, rows) => {
+            if (err) {
+                console.error("DB ERROR:", err.message);
+                return res.status(500).json({ message: "DB error" });
+            }
+            res.json({ matches: rows || [] });
+        }
+    );
+});
+
+// ============================
+// CHAT API (only for matches)
+// ============================
+
+// helper: validate match pair includes me
+function ensureMatchIncludesMe(me, user1, user2) {
+    return (me === user1 || me === user2) && user1 !== user2;
+}
+
+// Get messages for a match (by pair)
+app.get("/api/chat/:otherId", requireLogin, (req, res) => {
+    const me = req.session.userId;
+    const other = Number(req.params.otherId);
+    if (!other || Number.isNaN(other)) return res.status(400).json({ message: "Invalid otherId" });
+
+    const user1 = Math.min(me, other);
+    const user2 = Math.max(me, other);
+
+    // Verify match exists
+    db.get(
+        `SELECT 1 FROM matches WHERE user1_id = ? AND user2_id = ?`,
+        [user1, user2],
+        (err, matchRow) => {
+            if (err) return res.status(500).json({ message: "DB error" });
+            if (!matchRow) return res.status(403).json({ message: "Not matched" });
+
+            db.all(
+                `
+        SELECT id, sender_id, text, created_at
+        FROM messages
+        WHERE match_user1 = ? AND match_user2 = ?
+        ORDER BY id ASC
+        `,
+                [user1, user2],
+                (err2, rows) => {
+                    if (err2) return res.status(500).json({ message: "DB error" });
+                    res.json({ messages: rows || [] });
+                }
+            );
+        }
+    );
+});
+
+// Send a message to a match
+app.post("/api/chat/:otherId", requireLogin, (req, res) => {
+    const me = req.session.userId;
+    const other = Number(req.params.otherId);
+    const text = String(req.body.text || "").trim();
+
+    if (!other || Number.isNaN(other)) return res.status(400).json({ message: "Invalid otherId" });
+    if (!text) return res.status(400).json({ message: "Empty message" });
+
+    const user1 = Math.min(me, other);
+    const user2 = Math.max(me, other);
+
+    // Verify match exists
+    db.get(
+        `SELECT 1 FROM matches WHERE user1_id = ? AND user2_id = ?`,
+        [user1, user2],
+        (err, matchRow) => {
+            if (err) return res.status(500).json({ message: "DB error" });
+            if (!matchRow) return res.status(403).json({ message: "Not matched" });
+
+            db.run(
+                `
+        INSERT INTO messages (match_user1, match_user2, sender_id, text)
+        VALUES (?, ?, ?, ?)
+        `,
+                [user1, user2, me, text],
+                function (err2) {
+                    if (err2) return res.status(500).json({ message: "DB error" });
+                    res.json({ ok: true, id: this.lastID });
+                }
+            );
+        }
+    );
+});
+
 
 
 /* ================= START (ALWAYS LAST) ================= */

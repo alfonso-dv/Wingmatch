@@ -580,3 +580,72 @@ body {
     font-weight: 700;
 }
 
+.chat-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 14px;
+    margin-top: 14px;
+    text-align: left;
+}
+
+.chat-sidebar {
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 18px;
+    padding: 10px;
+    background: rgba(0,0,0,0.02);
+    max-height: 420px;
+    overflow: auto;
+}
+
+.chat-sidebar-title {
+    font-weight: 900;
+    margin-bottom: 10px;
+}
+
+.chat-panel {
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 18px;
+    padding: 10px;
+    background: rgba(0,0,0,0.02);
+    display: flex;
+    flex-direction: column;
+    min-height: 420px;
+}
+
+.chat-header {
+    font-weight: 900;
+    padding: 8px 6px;
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+    margin-bottom: 10px;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 6px;
+}
+
+.msg {
+    max-width: 80%;
+    padding: 10px 12px;
+    border-radius: 16px;
+    border: 1px solid rgba(0,0,0,0.08);
+    background: #fff;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.msg.me {
+    margin-left: auto;
+}
+
+.chat-input-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    align-items: center;
+}
+
