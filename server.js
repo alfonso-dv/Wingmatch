@@ -963,6 +963,72 @@ app.get("/api/matches", requireLogin, (req, res) => {
     );
 });
 
+// DELETE unmatch (removes match + chat + swipes so they can appear again in discover)
+app.delete("/api/matches/:otherId", requireLogin, (req, res) => {
+    const me = req.session.userId;
+    const other = Number(req.params.otherId);
+
+    if (!other || Number.isNaN(other)) return res.status(400).json({ message: "Invalid otherId" });
+    if (other === me) return res.status(400).json({ message: "Invalid otherId" });
+
+    const user1 = Math.min(me, other);
+    const user2 = Math.max(me, other);
+
+    // 1) ensure match exists
+    db.get(
+        `SELECT 1 FROM matches WHERE user1_id = ? AND user2_id = ?`,
+        [user1, user2],
+        (err, row) => {
+            if (err) {
+                console.error("DB ERROR:", err.message);
+                return res.status(500).json({ message: "DB error" });
+            }
+            if (!row) return res.status(404).json({ message: "Not matched" });
+
+            // 2) delete chat messages for this pair
+            db.run(
+                `DELETE FROM messages WHERE match_user1 = ? AND match_user2 = ?`,
+                [user1, user2],
+                (err2) => {
+                    if (err2) {
+                        console.error("DB ERROR:", err2.message);
+                        return res.status(500).json({ message: "DB error" });
+                    }
+
+                    // 3) delete match row
+                    db.run(
+                        `DELETE FROM matches WHERE user1_id = ? AND user2_id = ?`,
+                        [user1, user2],
+                        (err3) => {
+                            if (err3) {
+                                console.error("DB ERROR:", err3.message);
+                                return res.status(500).json({ message: "DB error" });
+                            }
+
+                            // 4) delete swipes BOTH ways so they can reappear in discover
+                            db.run(
+                                `DELETE FROM swipes
+                 WHERE (from_user_id = ? AND to_user_id = ?)
+                    OR (from_user_id = ? AND to_user_id = ?)`,
+                                [me, other, other, me],
+                                (err4) => {
+                                    if (err4) {
+                                        console.error("DB ERROR:", err4.message);
+                                        return res.status(500).json({ message: "DB error" });
+                                    }
+
+                                    return res.json({ ok: true, message: "Unmatched" });
+                                }
+                            );
+                        }
+                    );
+                }
+            );
+        }
+    );
+});
+
+
 // ============================
 // CHAT API (only for matches)
 // ============================

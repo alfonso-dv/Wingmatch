@@ -649,3 +649,5 @@ body {
     align-items: center;
 }
 
+.small-btn.danger { opacity: 0.9; }
+.small-btn.danger:hover { opacity: 1; }

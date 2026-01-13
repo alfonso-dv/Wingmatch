@@ -699,28 +699,36 @@ document.addEventListener("DOMContentLoaded", () => {
     async function loadMatches() {
         if (!matchesList) return;
 
-        matchesList.innerHTML = `<li class="search-result-item"><div class="search-result-name">Loading...</div></li>`;
+        matchesList.innerHTML =
+            `<li class="search-result-item"><div class="search-result-name">Loading...</div></li>`;
 
         try {
             const res = await fetch("/api/matches");
             const data = await res.json().catch(() => ({}));
 
             if (!res.ok) {
-                matchesList.innerHTML = `<li class="search-result-item"><div class="search-result-name">Failed to load matches</div></li>`;
+                matchesList.innerHTML =
+                    `<li class="search-result-item"><div class="search-result-name">Failed to load matches</div></li>`;
                 return;
             }
 
             const matches = Array.isArray(data.matches) ? data.matches : [];
+
             if (!matches.length) {
-                matchesList.innerHTML = `<li class="search-result-item"><div class="search-result-name">No matches yet</div></li>`;
+                matchesList.innerHTML =
+                    `<li class="search-result-item"><div class="search-result-name">No matches yet</div></li>`;
                 return;
             }
 
+            // Render list (Chat + Unmatch)
             matchesList.innerHTML = matches.map(m => `
       <li class="search-result-item" data-other-id="${m.otherId}">
         <div class="search-result-top">
           <div class="search-result-name">${escapeHtml(m.name || "Match")}</div>
-          <button class="small-btn">Chat</button>
+          <div style="display:flex; gap:8px;">
+            <button class="small-btn" data-open-chat="${m.otherId}">Chat</button>
+            <button class="small-btn danger" data-unmatch="${m.otherId}">❌</button>
+          </div>
         </div>
         <div class="search-result-sub">
           ${escapeHtml(String(m.age ?? ""))}${m.gender ? " • " + escapeHtml(m.gender) : ""}
@@ -728,21 +736,65 @@ document.addEventListener("DOMContentLoaded", () => {
       </li>
     `).join("");
 
-            // Click a match to open chat
-            matchesList.querySelectorAll("[data-other-id]").forEach(item => {
-                item.addEventListener("click", async () => {
-                    const otherId = Number(item.getAttribute("data-other-id"));
+            // Chat button
+            matchesList.querySelectorAll("[data-open-chat]").forEach(btn => {
+                btn.addEventListener("click", async (e) => {
+                    e.stopPropagation();
+                    const otherId = Number(btn.getAttribute("data-open-chat"));
                     if (!otherId) return;
+
                     currentChatOtherId = otherId;
                     if (chatHeader) chatHeader.textContent = "Chat";
                     await loadChat(otherId);
                 });
             });
 
+            // Unmatch button
+            matchesList.querySelectorAll("[data-unmatch]").forEach(btn => {
+                btn.addEventListener("click", async (e) => {
+                    e.stopPropagation();
+                    const otherId = Number(btn.getAttribute("data-unmatch"));
+                    if (!otherId) return;
+
+                    const ok = confirm("Do you really want to unmatch? You will lose this chat.");
+                    if (!ok) return;
+
+                    try {
+                        const r = await fetch(`/api/matches/${otherId}`, { method: "DELETE" });
+                        const out = await r.json().catch(() => ({}));
+
+                        if (!r.ok) {
+                            alert(out.message || "Unmatch failed");
+                            return;
+                        }
+
+                        // If you were viewing that chat, clear it
+                        if (currentChatOtherId === otherId) {
+                            currentChatOtherId = null;
+                            if (chatHeader) chatHeader.textContent = "Select a match";
+                            if (chatMessages) chatMessages.innerHTML = "";
+                        }
+
+                        showToast("Unmatched ✅");
+
+                        // Refresh matches list
+                        await loadMatches();
+
+                        // Optional: refresh discover so they can show again immediately
+                        if (typeof loadDiscoverProfiles === "function") loadDiscoverProfiles();
+
+                    } catch {
+                        alert("Unmatch failed");
+                    }
+                });
+            });
+
         } catch {
-            matchesList.innerHTML = `<li class="search-result-item"><div class="search-result-name">Failed to load matches</div></li>`;
+            matchesList.innerHTML =
+                `<li class="search-result-item"><div class="search-result-name">Failed to load matches</div></li>`;
         }
     }
+
 
     async function loadChat(otherId) {
         if (!chatMessages) return;
