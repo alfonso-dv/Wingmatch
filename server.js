@@ -462,12 +462,28 @@ app.get("/api/discover", requireLogin, (req, res) => {
             FROM users u
                      JOIN profiles p ON p.user_id = u.id
             WHERE u.id != ?
+
+      -- Hide people I already MATCHED with
       AND u.id NOT IN (
-        SELECT to_user_id FROM swipes WHERE from_user_id = ?
+        SELECT CASE
+          WHEN user1_id = ? THEN user2_id
+          ELSE user1_id
+        END
+        FROM matches
+        WHERE user1_id = ? OR user2_id = ?
       )
+
+      -- Hide people I already LIKED/SUPER-LIKED (pending response)
+      AND u.id NOT IN (
+        SELECT to_user_id
+        FROM swipes
+        WHERE from_user_id = ?
+          AND action IN ('LIKE','SUPER')
+      )
+
             ORDER BY p.updated_at DESC
         `,
-        [me, me],
+        [me, me, me, me, me],
         (err, rows) => {
             if (err) {
                 console.error("DB ERROR:", err.message);
@@ -868,15 +884,35 @@ app.post("/api/swipes", requireLogin, (req, res) => {
     if (other === me) return res.status(400).json({ message: "Cannot swipe yourself" });
     if (!["LIKE", "NOPE", "SUPER"].includes(act)) return res.status(400).json({ message: "Invalid action" });
 
-    // Upsert swipe
+    // ✅ NEW: if someone says NOPE, reset the interaction so both can reappear later
+    if (act === "NOPE") {
+        db.run(
+            `
+      DELETE FROM swipes
+      WHERE (from_user_id = ? AND to_user_id = ?)
+         OR (from_user_id = ? AND to_user_id = ?)
+      `,
+            [me, other, other, me],
+            (err) => {
+                if (err) {
+                    console.error("DB ERROR:", err.message);
+                    return res.status(500).json({ message: "DB error" });
+                }
+                return res.json({ ok: true, matched: false, reset: true });
+            }
+        );
+        return;
+    }
+
+    // LIKE / SUPER: store it (pending)
     db.run(
         `
-    INSERT INTO swipes (from_user_id, to_user_id, action)
-    VALUES (?, ?, ?)
-    ON CONFLICT(from_user_id, to_user_id) DO UPDATE SET
-      action = excluded.action,
-      created_at = datetime('now')
-    `,
+            INSERT INTO swipes (from_user_id, to_user_id, action)
+            VALUES (?, ?, ?)
+                ON CONFLICT(from_user_id, to_user_id) DO UPDATE SET
+                                                             action = excluded.action,
+                                                             created_at = datetime('now')
+        `,
         [me, other, act],
         (err) => {
             if (err) {
@@ -884,16 +920,13 @@ app.post("/api/swipes", requireLogin, (req, res) => {
                 return res.status(500).json({ message: "DB error" });
             }
 
-            // Only LIKE/SUPER can create match
-            if (act === "NOPE") return res.json({ ok: true, matched: false });
-
             // Check if the other user already liked me
             db.get(
                 `
-        SELECT action FROM swipes
-        WHERE from_user_id = ? AND to_user_id = ?
-          AND action IN ('LIKE','SUPER')
-        `,
+                    SELECT action FROM swipes
+                    WHERE from_user_id = ? AND to_user_id = ?
+                      AND action IN ('LIKE','SUPER')
+                `,
                 [other, me],
                 (err2, row) => {
                     if (err2) {
@@ -909,10 +942,10 @@ app.post("/api/swipes", requireLogin, (req, res) => {
 
                     db.run(
                         `
-            INSERT INTO matches (user1_id, user2_id)
-            VALUES (?, ?)
-            ON CONFLICT(user1_id, user2_id) DO NOTHING
-            `,
+                            INSERT INTO matches (user1_id, user2_id)
+                            VALUES (?, ?)
+                                ON CONFLICT(user1_id, user2_id) DO NOTHING
+                        `,
                         [user1, user2],
                         (err3) => {
                             if (err3) {
@@ -920,7 +953,6 @@ app.post("/api/swipes", requireLogin, (req, res) => {
                                 return res.status(500).json({ message: "DB error" });
                             }
 
-                            // Return match + basic info for UI
                             db.get(
                                 `SELECT id, name, age FROM users WHERE id = ?`,
                                 [other],
@@ -936,6 +968,7 @@ app.post("/api/swipes", requireLogin, (req, res) => {
         }
     );
 });
+
 
 // Get my matches list
 app.get("/api/matches", requireLogin, (req, res) => {
