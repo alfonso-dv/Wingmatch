@@ -74,6 +74,21 @@ db.serialize(() => {
     )
   `);
 
+    // Wingman Requests (PENDING / ACCEPTED / DECLINED)
+    db.run(`
+        CREATE TABLE IF NOT EXISTS wingman_requests (
+                                                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                        requester_id INTEGER NOT NULL,
+                                                        receiver_id INTEGER NOT NULL,
+                                                        status TEXT CHECK (status IN ('PENDING','ACCEPTED','DECLINED')) DEFAULT 'PENDING',
+            created_at TEXT DEFAULT (datetime('now')),
+            responded_at TEXT,
+            FOREIGN KEY (requester_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+    `);
+
+
     // Prompts tables (safe) — needed for your /api/prompts endpoints
     db.run(`
     CREATE TABLE IF NOT EXISTS prompts (
@@ -309,6 +324,38 @@ app.post("/api/login", (req, res) => {
     });
 });
 
+app.post("/api/wingman/request", requireLogin, (req, res) => {
+    const requesterId = req.session.userId;
+    const { receiverId } = req.body;
+
+    db.run(
+        `INSERT INTO wingman_requests (requester_id, receiver_id)
+         VALUES (?, ?)`,
+        [requesterId, receiverId],
+        () => res.json({ success: true })
+    );
+});
+
+
+app.get("/api/wingman/requests/pending", requireLogin, (req, res) => {
+    const userId = req.session.userId;
+
+    db.all(
+        `
+        SELECT wr.id, u.name AS requesterName
+        FROM wingman_requests wr
+        JOIN users u ON wr.requester_id = u.id
+        WHERE wr.receiver_id = ? AND wr.status = 'PENDING'
+        `,
+        [userId],
+        (err, rows) => {
+            if (err) return res.status(500).json([]);
+            res.json(rows);
+        }
+    );
+});
+
+
 app.post("/api/logout", (req, res) => {
     req.session.destroy(() => {
         res.clearCookie("connect.sid");
@@ -334,6 +381,42 @@ app.post("/api/profile/skip", requireLogin, (req, res) => {
         }
     );
 });
+
+app.post("/api/wingman/respond", requireLogin, (req, res) => {
+    const { requestId, decision } = req.body; // ACCEPTED | DECLINED
+
+    db.run(
+        `
+        UPDATE wingman_requests
+        SET status = ?, responded_at = datetime('now')
+        WHERE id = ?
+        `,
+        [decision, requestId],
+        function (err) {
+            if (err) return res.status(500).json({ error: "Update failed" });
+
+            // Wenn ACCEPTED → Wingman-Link erstellen
+            if (decision === "ACCEPTED") {
+                db.get(
+                    `SELECT requester_id, receiver_id FROM wingman_requests WHERE id = ?`,
+                    [requestId],
+                    (err, row) => {
+                        if (!err && row) {
+                            db.run(
+                                `INSERT OR IGNORE INTO wingman_links (user_id, wingman_user_id)
+                                 VALUES (?, ?)`,
+                                [row.requester_id, row.receiver_id]
+                            );
+                        }
+                    }
+                );
+            }
+
+            res.json({ success: true });
+        }
+    );
+});
+
 
 app.get("/api/profile", requireLogin, (req, res) => {
     const userId = req.session.userId;
@@ -371,6 +454,20 @@ app.get("/api/profile", requireLogin, (req, res) => {
         }
     );
 });
+
+app.get("/api/wingman/requests/sent", requireLogin, (req, res) => {
+    db.all(
+        `
+        SELECT wr.status, u.name AS receiverName
+        FROM wingman_requests wr
+        JOIN users u ON wr.receiver_id = u.id
+        WHERE wr.requester_id = ?
+        `,
+        [req.session.userId],
+        (err, rows) => res.json(rows || [])
+    );
+});
+
 
 app.post("/api/profile", requireLogin, (req, res) => {
     const {
@@ -828,7 +925,7 @@ app.post("/api/wingmen", requireLogin, (req, res) => {
             return res.status(404).json({ message: "User not found" });
         }
 
-        db.run(
+        /*db.run(
             `
       INSERT INTO wingman_links (user_id, wingman_user_id)
       VALUES (?, ?)
@@ -842,7 +939,23 @@ app.post("/api/wingmen", requireLogin, (req, res) => {
                 }
                 return res.json({ message: "Wingman added" });
             }
+        );*/
+
+        db.run(
+            `
+    INSERT INTO wingman_requests (requester_id, receiver_id)
+    VALUES (?, ?)
+    `,
+            [me, wingmanUserId],
+            (err2) => {
+                if (err2) {
+                    console.error("DB ERROR:", err2.message);
+                    return res.status(500).json({ message: "DB error" });
+                }
+                return res.json({ message: "Wingman request sent" });
+            }
         );
+
     });
 });
 

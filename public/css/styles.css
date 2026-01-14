@@ -651,3 +651,42 @@ body {
 
 .small-btn.danger { opacity: 0.9; }
 .small-btn.danger:hover { opacity: 1; }
+
+/* ===== Wingman Request Popup ===== */
+.popup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.popup {
+    background: #fff;
+    padding: 20px 24px;
+    border-radius: 12px;
+    min-width: 280px;
+    max-width: 90%;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    text-align: center;
+}
+
+.popup button {
+    margin: 8px 6px 0;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+}
+
+.popup button#accept {
+    background: #4CAF50;
+    color: white;
+}
+
+.popup button#decline {
+    background: #e74c3c;
+    color: white;
+}

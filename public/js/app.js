@@ -1,5 +1,46 @@
 // /js/app.js
 document.addEventListener("DOMContentLoaded", () => {
+
+    fetch("/api/wingman/requests/pending")
+        .then(res => res.json())
+        .then(requests => {
+            if (requests.length > 0) {
+                const r = requests[0];
+
+                const overlay = document.createElement("div");
+                overlay.className = "popup-overlay";
+
+                overlay.innerHTML = `
+    <div class="popup">
+        <p><b>${r.requesterName}</b> hat dich als Wingman angefragt</p>
+        <button id="accept">Annehmen</button>
+        <button id="decline">Ablehnen</button>
+    </div>
+`;
+
+                document.body.appendChild(overlay);
+
+
+                document.getElementById("accept").onclick = () => respond(r.id, "ACCEPTED");
+                document.getElementById("decline").onclick = () => respond(r.id, "DECLINED");
+            }
+        });
+
+    function respond(id, decision) {
+        fetch("/api/wingman/respond", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ requestId: id, decision })
+        }).then(() => {
+            document.querySelector(".popup-overlay")?.remove();
+            refreshWingmanLists(); // optional, aber gut
+        });
+
+    }
+
+
+
+
     // =========================
     // Demo Profiles (Fallback)
     // =========================
@@ -874,8 +915,14 @@ document.addEventListener("DOMContentLoaded", () => {
     // Wingmen / Best Friends Lists
     // =========================
     async function refreshWingmanLists() {
+        const sentReqRes = await fetch("/api/wingman/requests/sent");
+        const sentReqData = await sentReqRes.json();
+        const sentRequests = Array.isArray(sentReqData) ? sentReqData : [];
+
         const wingmenList = document.getElementById("wingmenList");
         const bestFriendsList = document.getElementById("bestFriendsList");
+        const pendingRequests = sentRequests.filter(r => r.status === "PENDING");
+
         if (!wingmenList || !bestFriendsList) return;
 
         try {
@@ -886,25 +933,46 @@ document.addEventListener("DOMContentLoaded", () => {
             const wingmen = Array.isArray(data.wingmen) ? data.wingmen : [];
             const bestFriends = Array.isArray(data.bestFriends) ? data.bestFriends : [];
 
-            wingmenList.innerHTML = wingmen.length
-                ? wingmen
-                    .map(
-                        (u) => `
-          <li class="side-item">
-            <div class="side-item-row">
-              <div>
+
+
+            const wingmenHtml = wingmen.map(
+                (u) => `
+    <li class="side-item">
+        <div class="side-item-row">
+            <div>
                 <div class="side-name">${escapeHtml(u.name || "User")}</div>
-                <div class="side-sub">${escapeHtml(String(u.age ?? ""))}${u.gender ? " • " + escapeHtml(u.gender) : ""}</div>
-              </div>
-              <div class="side-item-actions">
-                <button class="small-btn danger" data-remove-wingman="${u.id}">Remove</button>
-              </div>
+                <div class="side-sub">
+                    ${escapeHtml(String(u.age ?? ""))}${u.gender ? " • " + escapeHtml(u.gender) : ""}
+                </div>
             </div>
-          </li>
-        `
-                    )
-                    .join("")
-                : `<li class="side-item"><div class="side-name">No wingmen yet</div><div class="side-sub">Tap ＋ to add one</div></li>`;
+            <div class="side-item-actions">
+                <button class="small-btn danger" data-remove-wingman="${u.id}">Remove</button>
+            </div>
+        </div>
+    </li>
+`
+            ).join("");
+            const pendingHtml = pendingRequests.map(
+                (r) => `
+    <li class="side-item pending">
+        <div class="side-item-row">
+            <div>
+                <div class="side-name">${escapeHtml(r.receiverName)}</div>
+                <div class="side-sub">Request pending ⏳</div>
+            </div>
+        </div>
+    </li>
+`     ).join("");
+
+            wingmenList.innerHTML =
+                (wingmenHtml || pendingHtml)
+                    ? wingmenHtml + pendingHtml
+                    : `<li class="side-item">
+             <div class="side-name">No wingmen yet</div>
+             <div class="side-sub">Tap ＋ to add one</div>
+           </li>`;
+
+
 
             bestFriendsList.innerHTML = bestFriends.length
                 ? bestFriends
