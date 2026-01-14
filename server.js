@@ -383,36 +383,79 @@ app.post("/api/profile/skip", requireLogin, (req, res) => {
 });
 
 app.post("/api/wingman/respond", requireLogin, (req, res) => {
+    const receiverId = req.session.userId;
     const { requestId, decision } = req.body; // ACCEPTED | DECLINED
 
-    db.run(
-        `
-        UPDATE wingman_requests
-        SET status = ?, responded_at = datetime('now')
-        WHERE id = ?
-        `,
-        [decision, requestId],
-        function (err) {
-            if (err) return res.status(500).json({ error: "Update failed" });
+    const dec = String(decision || "").toUpperCase();
+    if (!["ACCEPTED", "DECLINED"].includes(dec)) {
+        return res.status(400).json({ message: "Invalid decision" });
+    }
 
-            // Wenn ACCEPTED → Wingman-Link erstellen
-            if (decision === "ACCEPTED") {
-                db.get(
-                    `SELECT requester_id, receiver_id FROM wingman_requests WHERE id = ?`,
-                    [requestId],
-                    (err, row) => {
-                        if (!err && row) {
+    // Load request and make sure it belongs to me and is pending
+    db.get(
+        `SELECT id, requester_id, receiver_id, status
+         FROM wingman_requests
+         WHERE id = ?`,
+        [Number(requestId)],
+        (err, reqRow) => {
+            if (err) return res.status(500).json({ message: "DB error" });
+            if (!reqRow) return res.status(404).json({ message: "Request not found" });
+            if (reqRow.receiver_id !== receiverId) return res.status(403).json({ message: "Not allowed" });
+            if (reqRow.status !== "PENDING") return res.status(400).json({ message: "Request already handled" });
+
+            // Update request status
+            db.run(
+                `UPDATE wingman_requests
+         SET status = ?, responded_at = datetime('now')
+         WHERE id = ?`,
+                [dec, reqRow.id],
+                function (err2) {
+                    if (err2) return res.status(500).json({ message: "Update failed" });
+
+                    // If declined -> done
+                    if (dec === "DECLINED") {
+                        return res.json({ success: true });
+                    }
+
+                    //ACCEPTED: enforce requester wingmen limit (max 5)
+                    const requesterId = reqRow.requester_id;
+
+                    db.get(
+                        `SELECT COUNT(*) AS cnt
+             FROM wingman_links
+             WHERE user_id = ?`,
+                        [requesterId],
+                        (err3, rowCount) => {
+                            if (err3) return res.status(500).json({ message: "DB error" });
+
+                            if ((rowCount?.cnt || 0) >= 5) {
+                                // roll back request to DECLINED (or keep accepted but no link — your choice)
+                                db.run(
+                                    `UPDATE wingman_requests
+                   SET status = 'DECLINED', responded_at = datetime('now')
+                   WHERE id = ?`,
+                                    [reqRow.id],
+                                    () => {
+                                        return res.status(400).json({ message: "Requester already has 5 wingmen." });
+                                    }
+                                );
+                                return;
+                            }
+
+                            // Create wingman link
                             db.run(
                                 `INSERT OR IGNORE INTO wingman_links (user_id, wingman_user_id)
-                                 VALUES (?, ?)`,
-                                [row.requester_id, row.receiver_id]
+                 VALUES (?, ?)`,
+                                [requesterId, receiverId],
+                                (err4) => {
+                                    if (err4) return res.status(500).json({ message: "DB error" });
+                                    return res.json({ success: true });
+                                }
                             );
                         }
-                    }
-                );
-            }
-
-            res.json({ success: true });
+                    );
+                }
+            );
         }
     );
 });
@@ -915,49 +958,78 @@ app.post("/api/wingmen", requireLogin, (req, res) => {
         return res.status(400).json({ message: "You cannot add yourself as wingman" });
     }
 
-    // ensure user exists
-    db.get("SELECT id FROM users WHERE id = ?", [wingmanUserId], (err, row) => {
-        if (err) {
-            console.error("DB ERROR:", err.message);
-            return res.status(500).json({ message: "DB error" });
-        }
-        if (!row) {
-            return res.status(404).json({ message: "User not found" });
-        }
+    // 1) Check accepted wingmen count (limit 5)
+    db.get(
+        `SELECT COUNT(*) AS cnt
+     FROM wingman_links
+     WHERE user_id = ?`,
+        [me],
+        (errCount, rowCount) => {
+            if (errCount) {
+                console.error("DB ERROR:", errCount.message);
+                return res.status(500).json({ message: "DB error" });
+            }
+            if ((rowCount?.cnt || 0) >= 5) {
+                return res.status(400).json({ message: "You can only have up to 5 wingmen." });
+            }
 
-        /*db.run(
-            `
-      INSERT INTO wingman_links (user_id, wingman_user_id)
-      VALUES (?, ?)
-      ON CONFLICT(user_id, wingman_user_id) DO NOTHING
-      `,
-            [me, wingmanUserId],
-            (err2) => {
-                if (err2) {
-                    console.error("DB ERROR:", err2.message);
+            //2) Ensure user exists
+            db.get("SELECT id FROM users WHERE id = ?", [wingmanUserId], (err, row) => {
+                if (err) {
+                    console.error("DB ERROR:", err.message);
                     return res.status(500).json({ message: "DB error" });
                 }
-                return res.json({ message: "Wingman added" });
-            }
-        );*/
+                if (!row) return res.status(404).json({ message: "User not found" });
 
-        db.run(
-            `
-    INSERT INTO wingman_requests (requester_id, receiver_id)
-    VALUES (?, ?)
-    `,
-            [me, wingmanUserId],
-            (err2) => {
-                if (err2) {
-                    console.error("DB ERROR:", err2.message);
-                    return res.status(500).json({ message: "DB error" });
-                }
-                return res.json({ message: "Wingman request sent" });
-            }
-        );
+                //3) Don’t allow request if already wingman
+                db.get(
+                    `SELECT 1 FROM wingman_links WHERE user_id = ? AND wingman_user_id = ?`,
+                    [me, wingmanUserId],
+                    (errLink, linkRow) => {
+                        if (errLink) {
+                            console.error("DB ERROR:", errLink.message);
+                            return res.status(500).json({ message: "DB error" });
+                        }
+                        if (linkRow) {
+                            return res.status(400).json({ message: "This user is already your wingman." });
+                        }
 
-    });
+                        //4) Don’t allow duplicate pending request to same person
+                        db.get(
+                            `SELECT 1 FROM wingman_requests
+               WHERE requester_id = ? AND receiver_id = ? AND status = 'PENDING'`,
+                            [me, wingmanUserId],
+                            (errReq, pendingRow) => {
+                                if (errReq) {
+                                    console.error("DB ERROR:", errReq.message);
+                                    return res.status(500).json({ message: "DB error" });
+                                }
+                                if (pendingRow) {
+                                    return res.status(400).json({ message: "Wingman request already sent." });
+                                }
+
+                                //5) Insert request
+                                db.run(
+                                    `INSERT INTO wingman_requests (requester_id, receiver_id)
+                   VALUES (?, ?)`,
+                                    [me, wingmanUserId],
+                                    (err2) => {
+                                        if (err2) {
+                                            console.error("DB ERROR:", err2.message);
+                                            return res.status(500).json({ message: "DB error" });
+                                        }
+                                        return res.json({ message: "Wingman request sent" });
+                                    }
+                                );
+                            }
+                        );
+                    }
+                );
+            });
+        }
+    );
 });
+
 
 // Remove wingman
 app.delete("/api/wingmen/:wingmanUserId", requireLogin, (req, res) => {
