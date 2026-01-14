@@ -978,7 +978,7 @@ document.addEventListener("DOMContentLoaded", () => {
          <div class="side-sub">Tap ＋ to add one</div>
        </li>`;
 
-// ✅ NOW the buttons exist, so now you can attach handlers
+// NOW the buttons exist, so now you can attach handlers
             wingmenList.querySelectorAll("[data-cancel-wingman-request]").forEach((btn) => {
                 btn.addEventListener("click", async (e) => {
                     e.stopPropagation();
