@@ -12,9 +12,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 overlay.innerHTML = `
     <div class="popup">
-        <p><b>${r.requesterName}</b> hat dich als Wingman angefragt</p>
-        <button id="accept">Annehmen</button>
-        <button id="decline">Ablehnen</button>
+        <p><b>${r.requesterName}</b> is asking you to be their Wingman</p>
+        <button id="accept">Accept</button>
+        <button id="decline">Deny</button>
     </div>
 `;
 
@@ -955,22 +955,52 @@ document.addEventListener("DOMContentLoaded", () => {
             const pendingHtml = pendingRequests.map(
                 (r) => `
     <li class="side-item pending">
-        <div class="side-item-row">
-            <div>
-                <div class="side-name">${escapeHtml(r.receiverName)}</div>
-                <div class="side-sub">Request pending ⏳</div>
-            </div>
+      <div class="side-item-row">
+        <div>
+          <div class="side-name">${escapeHtml(r.receiverName)}</div>
+          <div class="side-sub">Request pending ⏳</div>
         </div>
+        <div class="side-item-actions">
+          <button class="small-btn danger" data-cancel-wingman-request="${r.id}">Cancel</button>
+        </div>
+      </div>
     </li>
-`     ).join("");
+  `
+            ).join("");
+
+
 
             wingmenList.innerHTML =
                 (wingmenHtml || pendingHtml)
                     ? wingmenHtml + pendingHtml
                     : `<li class="side-item">
-             <div class="side-name">No wingmen yet</div>
-             <div class="side-sub">Tap ＋ to add one</div>
-           </li>`;
+         <div class="side-name">No wingmen yet</div>
+         <div class="side-sub">Tap ＋ to add one</div>
+       </li>`;
+
+// ✅ NOW the buttons exist, so now you can attach handlers
+            wingmenList.querySelectorAll("[data-cancel-wingman-request]").forEach((btn) => {
+                btn.addEventListener("click", async (e) => {
+                    e.stopPropagation();
+
+                    const requestId = Number(btn.getAttribute("data-cancel-wingman-request"));
+                    if (!requestId) return;
+
+                    const ok = confirm("Cancel this wingman request?");
+                    if (!ok) return;
+
+                    const r = await fetch(`/api/wingman/request/${requestId}`, { method: "DELETE" });
+                    const out = await r.json().catch(() => ({}));
+
+                    if (!r.ok) {
+                        alert(out.message || "Cancel failed");
+                        return;
+                    }
+
+                    showToast("Request cancelled");
+                    refreshWingmanLists();
+                });
+            });
 
 
 
@@ -978,21 +1008,24 @@ document.addEventListener("DOMContentLoaded", () => {
                 ? bestFriends
                     .map(
                         (u) => `
-          <li class="side-item">
-            <div class="side-item-row">
-              <div>
-                <div class="side-name">${escapeHtml(u.name || "User")}</div>
-                <div class="side-sub">${escapeHtml(String(u.age ?? ""))}${u.gender ? " • " + escapeHtml(u.gender) : ""}</div>
-              </div>
-              <div class="side-item-actions">
-                <span class="side-sub">Assigned you</span>
-              </div>
-            </div>
-          </li>
-        `
+  <li class="side-item">
+    <div class="side-item-row">
+      <div>
+        <div class="side-name">${escapeHtml(u.name || "User")}</div>
+        <div class="side-sub">${escapeHtml(String(u.age ?? ""))}${u.gender ? " • " + escapeHtml(u.gender) : ""}</div>
+      </div>
+
+      <div class="side-item-actions" style="display:flex; gap:8px; align-items:center;">
+        <span class="side-sub">Assigned you</span>
+        <button class="small-btn danger" data-remove-bestfriend="${u.id}">Remove</button>
+      </div>
+    </div>
+  </li>
+`
                     )
                     .join("")
                 : `<li class="side-item"><div class="side-name">No best friends yet</div><div class="side-sub">They appear when someone picks you</div></li>`;
+
 
             // remove buttons
             wingmenList.querySelectorAll("[data-remove-wingman]").forEach((btn) => {
@@ -1016,6 +1049,32 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 });
             });
+
+            // best friend remove buttons (remove yourself as their wingman)
+            bestFriendsList.querySelectorAll("[data-remove-bestfriend]").forEach((btn) => {
+                btn.addEventListener("click", async () => {
+                    const userId = Number(btn.getAttribute("data-remove-bestfriend"));
+                    if (!userId) return;
+
+                    const ok = confirm("Remove yourself as this user's wingman?");
+                    if (!ok) return;
+
+                    const r = await fetch(`/api/bestfriends/${userId}`, { method: "DELETE" });
+                    if (r.ok) {
+                        showToast("Removed");
+                        refreshWingmanLists();
+                    } else {
+                        try {
+                            const err = await r.json();
+                            alert(err.message || "Remove failed");
+                        } catch {
+                            alert("Remove failed");
+                        }
+                    }
+                });
+            });
+
+
         } catch {
             // ignore
         }
@@ -1120,7 +1179,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     if (r.ok) {
                         await refreshWingmanLists();
-                        showToast("Wingman added ✅");
+                        showToast("Request Sent");
                         closeAddWingmanModal();
                     } else {
                         try {

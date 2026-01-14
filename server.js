@@ -355,6 +355,33 @@ app.get("/api/wingman/requests/pending", requireLogin, (req, res) => {
     );
 });
 
+// Cancel a pending wingman request (only the requester can cancel)
+app.delete("/api/wingman/request/:requestId", requireLogin, (req, res) => {
+    const me = req.session.userId;
+    const requestId = Number(req.params.requestId);
+
+    if (!requestId || Number.isNaN(requestId)) {
+        return res.status(400).json({ message: "Invalid requestId" });
+    }
+
+    db.get(
+        `SELECT id, requester_id, status FROM wingman_requests WHERE id = ?`,
+        [requestId],
+        (err, row) => {
+            if (err) return res.status(500).json({ message: "DB error" });
+            if (!row) return res.status(404).json({ message: "Request not found" });
+            if (row.requester_id !== me) return res.status(403).json({ message: "Not allowed" });
+            if (row.status !== "PENDING") return res.status(400).json({ message: "Request is not pending" });
+
+            db.run(`DELETE FROM wingman_requests WHERE id = ?`, [requestId], (err2) => {
+                if (err2) return res.status(500).json({ message: "DB error" });
+                return res.json({ ok: true });
+            });
+        }
+    );
+});
+
+
 
 app.post("/api/logout", (req, res) => {
     req.session.destroy(() => {
@@ -501,10 +528,11 @@ app.get("/api/profile", requireLogin, (req, res) => {
 app.get("/api/wingman/requests/sent", requireLogin, (req, res) => {
     db.all(
         `
-        SELECT wr.status, u.name AS receiverName
-        FROM wingman_requests wr
-        JOIN users u ON wr.receiver_id = u.id
-        WHERE wr.requester_id = ?
+            SELECT wr.id, wr.status, u.name AS receiverName
+            FROM wingman_requests wr
+                     JOIN users u ON wr.receiver_id = u.id
+            WHERE wr.requester_id = ?
+            ORDER BY wr.created_at DESC
         `,
         [req.session.userId],
         (err, rows) => res.json(rows || [])
@@ -1052,6 +1080,34 @@ app.delete("/api/wingmen/:wingmanUserId", requireLogin, (req, res) => {
         }
     );
 });
+
+// Remove ME as wingman from someone else's list (removing a "Best Friend")
+app.delete("/api/bestfriends/:userId", requireLogin, (req, res) => {
+    const me = req.session.userId; // I am the wingman
+    const userId = Number(req.params.userId); // the person who added me as wingman
+
+    if (!userId || Number.isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid userId" });
+    }
+    if (userId === me) {
+        return res.status(400).json({ message: "Invalid userId" });
+    }
+
+    db.run(
+        `DELETE FROM wingman_links WHERE user_id = ? AND wingman_user_id = ?`,
+        [userId, me],
+        function (err) {
+            if (err) {
+                console.error("DB ERROR:", err.message);
+                return res.status(500).json({ message: "DB error" });
+            }
+
+            // If there was nothing to delete, still respond ok (idempotent)
+            return res.json({ message: "Removed yourself as wingman" });
+        }
+    );
+});
+
 
 // ============================
 // MATCHING API
