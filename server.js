@@ -904,6 +904,7 @@ app.get("/api/wingmen", requireLogin, (req, res) => {
 });
 
 // Add wingman
+// Add wingman (MAX 5)
 app.post("/api/wingmen", requireLogin, (req, res) => {
     const me = req.session.userId;
     const wingmanUserId = Number(req.body.wingmanUserId);
@@ -915,49 +916,58 @@ app.post("/api/wingmen", requireLogin, (req, res) => {
         return res.status(400).json({ message: "You cannot add yourself as wingman" });
     }
 
-    // ensure user exists
-    db.get("SELECT id FROM users WHERE id = ?", [wingmanUserId], (err, row) => {
-        if (err) {
-            console.error("DB ERROR:", err.message);
-            return res.status(500).json({ message: "DB error" });
-        }
-        if (!row) {
-            return res.status(404).json({ message: "User not found" });
-        }
+    // 1) Check current wingmen count
+    db.get(
+        `SELECT COUNT(*) AS cnt FROM wingman_links WHERE user_id = ?`,
+        [me],
+        (errCount, rowCount) => {
+            if (errCount) {
+                console.error("DB ERROR:", errCount.message);
+                return res.status(500).json({ message: "DB error" });
+            }
 
-        /*db.run(
-            `
-      INSERT INTO wingman_links (user_id, wingman_user_id)
-      VALUES (?, ?)
-      ON CONFLICT(user_id, wingman_user_id) DO NOTHING
-      `,
-            [me, wingmanUserId],
-            (err2) => {
-                if (err2) {
-                    console.error("DB ERROR:", err2.message);
+            const cnt = Number(rowCount?.cnt ?? 0);
+            if (cnt >= 5) {
+                return res.status(400).json({ message: "You can only have up to 5 wingmen." });
+            }
+
+            // 2) Ensure user exists
+            db.get("SELECT id FROM users WHERE id = ?", [wingmanUserId], (err, row) => {
+                if (err) {
+                    console.error("DB ERROR:", err.message);
                     return res.status(500).json({ message: "DB error" });
                 }
-                return res.json({ message: "Wingman added" });
-            }
-        );*/
-
-        db.run(
-            `
-    INSERT INTO wingman_requests (requester_id, receiver_id)
-    VALUES (?, ?)
-    `,
-            [me, wingmanUserId],
-            (err2) => {
-                if (err2) {
-                    console.error("DB ERROR:", err2.message);
-                    return res.status(500).json({ message: "DB error" });
+                if (!row) {
+                    return res.status(404).json({ message: "User not found" });
                 }
-                return res.json({ message: "Wingman request sent" });
-            }
-        );
 
-    });
+                // 3) Insert wingman (no duplicates)
+                db.run(
+                    `
+          INSERT INTO wingman_links (user_id, wingman_user_id)
+          VALUES (?, ?)
+          ON CONFLICT(user_id, wingman_user_id) DO NOTHING
+          `,
+                    [me, wingmanUserId],
+                    function (err2) {
+                        if (err2) {
+                            console.error("DB ERROR:", err2.message);
+                            return res.status(500).json({ message: "DB error" });
+                        }
+
+                        // If it already existed, don't count it as "added"
+                        if (this.changes === 0) {
+                            return res.status(200).json({ message: "Already your wingman" });
+                        }
+
+                        return res.json({ message: "Wingman added" });
+                    }
+                );
+            });
+        }
+    );
 });
+
 
 // Remove wingman
 app.delete("/api/wingmen/:wingmanUserId", requireLogin, (req, res) => {
