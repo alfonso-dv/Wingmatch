@@ -74,6 +74,19 @@ db.serialize(() => {
     )
   `);
 
+    db.run(`
+  CREATE TABLE IF NOT EXISTS profile_comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    profile_user_id INTEGER NOT NULL,
+    wingman_user_id INTEGER NOT NULL,
+    comment TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (profile_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (wingman_user_id) REFERENCES users(id) ON DELETE CASCADE
+  )
+`);
+
+
     // Wingman Requests (PENDING / ACCEPTED / DECLINED)
     db.run(`
         CREATE TABLE IF NOT EXISTS wingman_requests (
@@ -1387,6 +1400,67 @@ app.post("/api/chat/:otherId", requireLogin, (req, res) => {
         }
     );
 });
+
+app.post("/api/profile/:userId/comments", requireLogin, (req, res) => {
+    const wingmanId = req.session.userId;
+    const profileUserId = Number(req.params.userId);
+    const { comment } = req.body;
+
+    if (!comment || !comment.trim()) {
+        return res.status(400).json({ message: "Comment required" });
+    }
+
+    // 🔒 Check: Was wingman accepted?
+    db.get(
+        `
+            SELECT 1
+            FROM wingman_links
+            WHERE (user_id = ? AND wingman_user_id = ?)
+               OR (user_id = ? AND wingman_user_id = ?)
+        `,
+        [profileUserId, wingmanId, wingmanId, profileUserId],
+
+        [profileUserId, wingmanId],
+        (err, row) => {
+            if (err) return res.status(500).json({ message: "DB error" });
+            if (!row) {
+                return res.status(403).json({
+                    message: "Only accepted wingmen can comment"
+                });
+            }
+
+            // ✅ Save comment
+            db.run(
+                `
+                INSERT INTO profile_comments (profile_user_id, wingman_user_id, comment)
+                VALUES (?, ?, ?)
+                `,
+                [profileUserId, wingmanId, comment.trim()],
+                () => res.json({ success: true })
+            );
+        }
+    );
+});
+
+app.get("/api/profile/:userId/comments", (req, res) => {
+    const profileUserId = Number(req.params.userId);
+
+    db.all(
+        `
+        SELECT c.comment, c.created_at, u.name
+        FROM profile_comments c
+        JOIN users u ON u.id = c.wingman_user_id
+        WHERE c.profile_user_id = ?
+        ORDER BY c.created_at DESC
+        `,
+        [profileUserId],
+        (err, rows) => {
+            if (err) return res.status(500).json({ message: "DB error" });
+            res.json({ comments: rows });
+        }
+    );
+});
+
 
 
 

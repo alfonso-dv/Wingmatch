@@ -149,6 +149,28 @@
 
         <div id="result" class="text-center small fw-bold mt-2"></div>
 
+
+        <!-- =========================
+     WINGMAN COMMENTS
+========================= -->
+        <section id="wingmanCommentsSection" class="mt-4 hidden">
+            <h3>Wingman Comments 💬</h3>
+
+            <!-- Only visible if viewer is a wingman -->
+            <div id="wingmanCommentBox" class="hidden">
+        <textarea id="wingmanCommentText"
+                  placeholder="Say something nice about your friend…"
+                  class="form-control mb-2"></textarea>
+                <button id="postWingmanComment" class="btn btn-primary btn-sm">
+                    Post comment
+                </button>
+            </div>
+
+            <!-- Visible to everyone -->
+            <ul id="profileCommentsList" class="mt-3"></ul>
+        </section>
+
+
     </form>
 </div>
 

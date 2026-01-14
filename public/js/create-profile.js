@@ -10,6 +10,8 @@ const helperText = document.getElementById("helperText");
 
 // Detect mode (?mode=edit means homepage edit)
 const params = new URLSearchParams(window.location.search);
+const profileUserId = Number(params.get("userId")) || null;
+
 const isEditMode = params.get("mode") === "edit";
 
 // Apply UI differences WITHOUT touching onboarding flow
@@ -26,6 +28,12 @@ if (isEditMode) {
   // helperText bleibt wie im HTML
   if (managePics) managePics.style.display = "none";
 }
+const commentsSection = document.getElementById("wingmanCommentsSection");
+
+if (!isEditMode && profileUserId) {
+  commentsSection?.classList.remove("hidden");
+}
+
 
 // NEW: X closes and returns to homepage
 if (closeBtn) {
@@ -123,6 +131,66 @@ async function loadPrompts() {
     `;
 
     container.appendChild(wrapper);
+  });
+}
+
+async function loadProfileComments() {
+  if (!profileUserId) return;
+
+  const res = await fetch(`/api/profile/${profileUserId}/comments`);
+  if (!res.ok) return;
+
+  const data = await res.json();
+  const list = document.getElementById("profileCommentsList");
+  if (!list) return;
+
+  list.innerHTML = data.comments.length
+      ? data.comments.map(c => `
+        <li class="mb-2">
+          <b>${escapeHtml(c.name)}</b>: ${escapeHtml(c.comment)}
+        </li>
+      `).join("")
+      : `<li class="text-muted">No wingman comments yet.</li>`;
+}
+async function checkIfWingman() {
+  if (!profileUserId) return false;
+
+  const res = await fetch("/api/wingmen");
+  if (!res.ok) return false;
+
+  const data = await res.json();
+  return data.wingmen.some(w => w.id === profileUserId);
+}
+
+async function setupWingmanCommentBox() {
+  const box = document.getElementById("wingmanCommentBox");
+  const btn = document.getElementById("postWingmanComment");
+  const textarea = document.getElementById("wingmanCommentText");
+
+  if (!box || !btn || !textarea) return;
+
+  const isWingman = await checkIfWingman();
+  if (!isWingman) return;
+
+  box.classList.remove("hidden");
+
+  btn.addEventListener("click", async () => {
+    const text = textarea.value.trim();
+    if (!text) return;
+
+    const res = await fetch(`/api/profile/${profileUserId}/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ comment: text })
+    });
+
+    if (!res.ok) {
+      alert("Only wingmen can comment");
+      return;
+    }
+
+    textarea.value = "";
+    loadProfileComments();
   });
 }
 
@@ -238,6 +306,12 @@ form.onsubmit = async (e) => {
 
   showSuccess("Profile saved!");
   setTimeout(() => location.href = "/index", 300);
+
+  if (!isEditMode && profileUserId) {
+    await loadProfileComments();
+    await setupWingmanCommentBox();
+  }
+
 };
 
 
