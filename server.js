@@ -630,6 +630,13 @@ app.get("/api/discover", requireLogin, (req, res) => {
             FROM users u
                      JOIN profiles p ON p.user_id = u.id
             WHERE u.id != ?
+            
+      -- Hide my wingmen AND my best friends (any wingman link in either direction)
+      AND u.id NOT IN (
+        SELECT wingman_user_id FROM wingman_links WHERE user_id = ?
+        UNION
+        SELECT user_id FROM wingman_links WHERE wingman_user_id = ?
+      )
 
       -- Hide people I already MATCHED with
       AND u.id NOT IN (
