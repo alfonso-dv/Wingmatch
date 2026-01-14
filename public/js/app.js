@@ -1004,16 +1004,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     refreshWingmanLists();
                 });
             });
-            document.querySelectorAll(".profile-link").forEach(el => {
-                el.addEventListener("click", () => {
-                    const userId = el.dataset.profileId;
-                    if (!userId) return;
-
-                    // 👉 Öffnet Profilansicht
-                    window.location.href = `/create-profile?userId=${userId}`;
-                });
-            });
-
 
 
 
@@ -1024,7 +1014,10 @@ document.addEventListener("DOMContentLoaded", () => {
   <li class="side-item">
     <div class="side-item-row">
       <div>
-        <div class="side-name">${escapeHtml(u.name || "User")}</div>
+       <div class="side-name profile-link" data-profile-id="${u.id}">
+    ${escapeHtml(u.name || "User")}
+</div>
+
         <div class="side-sub">${escapeHtml(String(u.age ?? ""))}${u.gender ? " • " + escapeHtml(u.gender) : ""}</div>
       </div>
 
@@ -1039,6 +1032,16 @@ document.addEventListener("DOMContentLoaded", () => {
                     .join("")
                 : `<li class="side-item"><div class="side-name">No best friends yet</div><div class="side-sub">They appear when someone picks you</div></li>`;
 
+            document.querySelectorAll(".profile-link").forEach(el => {
+                el.addEventListener("click", () => {
+                    const userId = el.dataset.profileId;
+                    if (!userId) return;
+
+                    // 👉 Öffnet Profilansicht
+                    window.location.href = `/profile/${userId}`;
+
+                });
+            });
 
             // remove buttons
             wingmenList.querySelectorAll("[data-remove-wingman]").forEach((btn) => {
@@ -1244,9 +1247,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // Load lists on page open (safe even if lists don't exist on other pages)
     refreshWingmanLists();
     document.querySelectorAll(".profile-link").forEach(el => {
-        el.addEventListener("click", () => {
-            const id = el.dataset.profileId;
-            window.location.href = `/create-profile?userId=${id}`;
+        el.addEventListener("click", (e) => {
+            e.stopPropagation(); // wichtig
+
+            const userId = el.dataset.profileId;
+            if (!userId) return;
+
+            window.location.href = `/profile/${userId}`;
         });
     });
 

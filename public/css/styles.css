@@ -690,3 +690,85 @@ body {
     background: #e74c3c;
     color: white;
 }
+.profile-card {
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 28px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+}
+#wingmanCommentText {
+    width: 100%;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    resize: none;
+}
+
+#postWingmanComment {
+    margin-top: 8px;
+    width: 100%;
+}
+.profile-photo {
+    width: 100%;
+    height: 260px;
+    object-fit: cover;   /* ✨ DAS ist der Schlüssel */
+    border-radius: 14px;
+    margin-bottom: 12px;
+}
+.profile-photos img {
+    width: 100%;
+    height: auto;
+    border-radius: 14px;
+    margin-bottom: 12px;
+    object-fit: cover;
+}
+
+.profile-section {
+    margin-top: 18px;
+}
+
+.profile-section h4 {
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #555;
+}
+
+.profile-section p {
+    background: #f6f7f9;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    color: #333;
+}
+/* =========================
+   PROFILE VIEW – RESPONSIVE
+========================= */
+
+.page-center {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 24px 12px;
+    background: #f3f4f6; /* hellgrau */
+}
+
+.profile-card {
+    width: 100%;
+    max-width: 420px;
+    background: #fff;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+}
+#wingmanCommentsSection textarea {
+    width: 100%;
+    min-height: 80px;
+    resize: vertical;
+    border-radius: 10px;
+    padding: 10px;
+    border: 1px solid #ddd;
+}

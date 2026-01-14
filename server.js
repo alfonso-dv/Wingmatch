@@ -75,16 +75,17 @@ db.serialize(() => {
   `);
 
     db.run(`
-  CREATE TABLE IF NOT EXISTS profile_comments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    profile_user_id INTEGER NOT NULL,
-    wingman_user_id INTEGER NOT NULL,
-    comment TEXT NOT NULL,
-    created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (profile_user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (wingman_user_id) REFERENCES users(id) ON DELETE CASCADE
-  )
-`);
+        CREATE TABLE IF NOT EXISTS profile_comments (
+                                                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                        profile_user_id INTEGER NOT NULL,
+                                                        commenter_user_id INTEGER NOT NULL,
+                                                        comment TEXT NOT NULL,
+                                                        created_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (profile_user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (commenter_user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+
+    `);
 
 
     // Wingman Requests (PENDING / ACCEPTED / DECLINED)
@@ -791,6 +792,30 @@ app.post("/api/photos/second", requireLogin, upload.single("photo"), (req, res) 
     });
 });
 
+app.get("/api/profile/:userId/is-wingman", requireLogin, (req, res) => {
+    const me = req.session.userId;
+    const profileUserId = Number(req.params.userId);
+
+    db.get(
+        `
+            SELECT 1
+            FROM wingman_links
+            WHERE (user_id = ? AND wingman_user_id = ?)
+               OR (user_id = ? AND wingman_user_id = ?)
+        `,
+        [profileUserId, me, me, profileUserId],
+        (err, row) => {
+            if (err) {
+                console.error(err);
+                return res.json({ isWingman: false });
+            }
+            res.json({ isWingman: !!row });
+        }
+    );
+});
+
+
+
 app.get("/api/photos", requireLogin, (req, res) => {
     const userId = req.session.userId;
 
@@ -1401,16 +1426,43 @@ app.post("/api/chat/:otherId", requireLogin, (req, res) => {
     );
 });
 
+
+app.get("/api/profile/:userId/comments", requireLogin, (req, res) => {
+    const profileUserId = Number(req.params.userId);
+    const me = req.session.userId;
+
+    db.all(
+        `
+            SELECT
+                c.id,
+                c.comment AS text,
+                (c.profile_user_id = ?) AS canDelete
+            FROM profile_comments c
+            WHERE c.profile_user_id = ?
+            ORDER BY c.created_at DESC
+        `,
+        [me, profileUserId],
+        (err, rows) => {
+            if (err) {
+                console.error(err);
+                return res.json({ comments: [] });
+            }
+            res.json({ comments: rows || [] });
+        }
+    );
+});
+
+
 app.post("/api/profile/:userId/comments", requireLogin, (req, res) => {
-    const wingmanId = req.session.userId;
+    const me = req.session.userId;
     const profileUserId = Number(req.params.userId);
     const { comment } = req.body;
 
     if (!comment || !comment.trim()) {
-        return res.status(400).json({ message: "Comment required" });
+        return res.status(400).json({ message: "Comment cannot be empty" });
     }
 
-    // 🔒 Check: Was wingman accepted?
+    // 🔒 Wingman-Check (beide Richtungen!)
     db.get(
         `
             SELECT 1
@@ -1418,48 +1470,107 @@ app.post("/api/profile/:userId/comments", requireLogin, (req, res) => {
             WHERE (user_id = ? AND wingman_user_id = ?)
                OR (user_id = ? AND wingman_user_id = ?)
         `,
-        [profileUserId, wingmanId, wingmanId, profileUserId],
-
-        [profileUserId, wingmanId],
+        [profileUserId, me, me, profileUserId],
         (err, row) => {
-            if (err) return res.status(500).json({ message: "DB error" });
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ message: "DB error" });
+            }
+
+            // ❌ KEIN Wingman → STOP
             if (!row) {
                 return res.status(403).json({
-                    message: "Only accepted wingmen can comment"
+                    message: "Only wingmen can comment"
                 });
             }
 
-            // ✅ Save comment
+            // ✅ Wingman → speichern
             db.run(
                 `
-                INSERT INTO profile_comments (profile_user_id, wingman_user_id, comment)
-                VALUES (?, ?, ?)
+                    INSERT INTO profile_comments
+                        (profile_user_id, commenter_user_id, comment)
+                    VALUES (?, ?, ?)
                 `,
-                [profileUserId, wingmanId, comment.trim()],
-                () => res.json({ success: true })
+                [profileUserId, me, comment.trim()],
+                (err2) => {
+                    if (err2) {
+                        console.error(err2);
+                        return res.status(500).json({ message: "DB error" });
+                    }
+                    res.json({ success: true });
+                }
             );
         }
     );
 });
 
-app.get("/api/profile/:userId/comments", (req, res) => {
-    const profileUserId = Number(req.params.userId);
 
-    db.all(
-        `
-        SELECT c.comment, c.created_at, u.name
-        FROM profile_comments c
-        JOIN users u ON u.id = c.wingman_user_id
-        WHERE c.profile_user_id = ?
-        ORDER BY c.created_at DESC
-        `,
-        [profileUserId],
-        (err, rows) => {
-            if (err) return res.status(500).json({ message: "DB error" });
-            res.json({ comments: rows });
-        }
+
+
+
+
+app.get("/profile/:userId", requireLogin, (req, res) => {
+    res.sendFile(
+        path.join(__dirname, "public/profile-view.html")
     );
 });
+app.get("/api/profile/:userId", requireLogin, (req, res) => {
+    const userId = Number(req.params.userId);
+
+    db.get(`
+        SELECT
+            u.name, u.age, u.gender, u.location,
+            p.bio, p.hobbies, p.zodiac, p.looking_for,
+            p.extra, p.interested_in,
+            p.pref_age_min, p.pref_age_max,
+            p.photos
+        FROM users u
+                 JOIN profiles p ON p.user_id = u.id
+        WHERE u.id = ?
+    `, [userId], (err, row) => {
+        if (err || !row) {
+            return res.status(404).json({ message: "Profile not found" });
+        }
+
+        let photos = [];
+        try { photos = JSON.parse(row.photos || "[]"); } catch {}
+
+        res.json({
+            name: row.name,
+            age: row.age,
+            gender: row.gender,
+            location: row.location,
+            bio: row.bio,
+            hobbies: row.hobbies,
+            zodiac: row.zodiac,
+            lookingFor: row.looking_for,
+            extra: row.extra,
+            interestedIn: row.interested_in,
+            prefAgeMin: row.pref_age_min,
+            prefAgeMax: row.pref_age_max,
+            photos
+        });
+    });
+});
+app.get("/api/profile/:userId/prompts", requireLogin, (req, res) => {
+    const userId = Number(req.params.userId);
+
+    db.all(`
+        SELECT p.prompt_text AS prompt_text, a.answer
+        FROM user_prompt_answers a
+                 JOIN prompts p ON p.id = a.prompt_id
+        WHERE a.user_id = ?
+    `, [userId], (err, rows) => {
+        if (err) {
+            console.error("DB ERROR:", err.message);
+            return res.status(500).json({ prompts: [] });
+        }
+
+        res.json({ prompts: rows || [] });
+    });
+});
+
+
 
 
 

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Profile</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+</head>
+
+<body>
+<div class="page-center">
+    <div class="profile-card">
+
+        <h2 id="profileName"></h2>
+        <div id="profileMeta" class="profile-meta"></div>
+
+        <div id="profilePhotos" class="photo-grid"></div>
+
+        <div class="profile-section">
+            <h4>About</h4>
+            <div id="profileBio" class="profile-box"></div>
+        </div>
+
+        <div class="profile-section">
+            <h4>Hobbies</h4>
+            <div id="profileHobbies" class="profile-box"></div>
+        </div>
+
+        <div class="profile-section">
+            <h4>Zodiac</h4>
+            <div id="profileZodiac" class="profile-box"></div>
+        </div>
+
+        <div class="profile-section">
+            <h4>Looking for</h4>
+            <div id="profileLookingFor" class="profile-box"></div>
+        </div>
+
+        <div class="profile-section">
+            <h4>More</h4>
+            <div id="profileExtra" class="profile-box"></div>
+        </div>
+
+        <!-- PROMPTS -->
+        <div id="profilePrompts"></div>
+
+        <!-- WINGMAN COMMENTS -->
+        <section id="wingmanCommentsSection" class="mt-4">
+            <h3>Wingman Comments 💬</h3>
+
+            <!-- COMMENT INPUT (nur Wingman sichtbar) -->
+            <div id="wingmanCommentBox" class="hidden">
+        <textarea id="wingmanCommentText"
+                  placeholder="Say something nice about your friend…"></textarea>
+                <button id="postWingmanComment">Post</button>
+            </div>
+
+            <!-- COMMENTS LIST -->
+            <div id="wingmanCommentsList"></div>
+
+            <!-- NO COMMENTS -->
+            <p id="noWingmanComments" class="hidden">No comments yet</p>
+        </section>
+
+    </div>
+
+    <button onclick="window.history.back()">← Back</button>
+
+</div>
+
+
+
+
+
+
+<script src="/js/profile-view.js"></script>
+</body>
+</html>
