@@ -632,82 +632,131 @@ app.post("/api/profile", requireLogin, (req, res) => {
 app.get("/api/discover", requireLogin, (req, res) => {
     const me = req.session.userId;
 
-    const sql = `
-    SELECT
-      u.id AS userId,
-      u.name,
-      u.age,
-      u.gender,
-      p.bio,
-      p.photos
-    FROM users u
-    JOIN profiles p ON p.user_id = u.id
-    WHERE u.id != ?
+    db.all(
+        `
+            SELECT
+                u.id AS userId,
+                u.name,
+                u.age,
+                u.gender,
+                p.bio,
+                p.photos
+            FROM users u
+            JOIN profiles p ON p.user_id = u.id
+            WHERE u.id != ?
 
-    -- Hide my wingmen AND my best friends
-    AND u.id NOT IN (
-      SELECT wingman_user_id FROM wingman_links WHERE user_id = ?
-      UNION
-      SELECT user_id FROM wingman_links WHERE wingman_user_id = ?
-    )
+            -- Hide my wingmen AND my best friends (any wingman link in either direction)
+            AND u.id NOT IN (
+                SELECT wingman_user_id FROM wingman_links WHERE user_id = ?
+                UNION
+                SELECT user_id FROM wingman_links WHERE wingman_user_id = ?
+            )
 
-    -- Hide people I already MATCHED with
-    AND u.id NOT IN (
-      SELECT CASE
-        WHEN user1_id = ? THEN user2_id
-        ELSE user1_id
-      END
-      FROM matches
-      WHERE user1_id = ? OR user2_id = ?
-    )
+            -- Hide people I already MATCHED with
+            AND u.id NOT IN (
+                SELECT CASE
+                    WHEN user1_id = ? THEN user2_id
+                    ELSE user1_id
+                END
+                FROM matches
+                WHERE user1_id = ? OR user2_id = ?
+            )
 
-    -- Hide people I already LIKED/SUPER-LIKED (pending response)
-    AND u.id NOT IN (
-      SELECT to_user_id
-      FROM swipes
-      WHERE from_user_id = ?
-        AND action IN ('LIKE','SUPER')
-    )
+            -- Hide people I already LIKED/SUPER-LIKED (pending response)
+            AND u.id NOT IN (
+                SELECT to_user_id
+                FROM swipes
+                WHERE from_user_id = ?
+                  AND action IN ('LIKE','SUPER')
+            )
 
-    ORDER BY p.updated_at DESC
-  `;
+            ORDER BY p.updated_at DESC
+        `,
+        [me, me, me, me, me, me, me],
+        (err, rows) => {
+            if (err) {
+                console.error("DB ERROR:", err.message);
+                return res.status(500).json({ message: "DB error" });
+            }
 
-    const params = [
-        me, // u.id != ?
-        me, // wingmen user_id = ?
-        me, // bestFriends wingman_user_id = ?
-        me, // CASE WHEN user1_id = ?
-        me, // WHERE user1_id = ?
-        me, // OR user2_id = ?
-        me, // swipes from_user_id = ?
-    ];
+            const profiles = (rows || [])
+                .map((r) => {
+                    let photosArr = [];
+                    try { photosArr = JSON.parse(r.photos || "[]"); } catch { photosArr = []; }
+                    photosArr = photosArr.filter((x) => typeof x === "string" && x.trim().length > 0);
 
-    db.all(sql, params, (err, rows) => {
-        if (err) {
-            console.error("DB ERROR:", err.message);
-            return res.status(500).json({ message: "DB error" });
+                    return {
+                        id: `u_${r.userId}`,
+                        userId: r.userId, // keep numeric ID for comments lookup
+                        name: r.name || "",
+                        age: r.age || "",
+                        gender: r.gender || "",
+                        bio: (r.bio || "").trim(),
+                        photos: photosArr,
+                        wingmanComments: [], // will fill below
+                    };
+                })
+                .filter((p) => p.photos.length >= 1);
+
+            // If no profiles, return quickly
+            if (!profiles.length) {
+                return res.json({ profiles: [] });
+            }
+
+            // Fetch latest wingman comments for these profiles
+            const userIds = profiles.map(p => p.userId).filter(Boolean);
+            const placeholders = userIds.map(() => "?").join(",");
+
+            db.all(
+                `
+                SELECT
+                    c.profile_user_id AS profileUserId,
+                    c.comment AS text,
+                    c.created_at AS createdAt,
+                    u.name AS commenterName
+                FROM profile_comments c
+                JOIN users u ON u.id = c.commenter_user_id
+                WHERE c.profile_user_id IN (${placeholders})
+                ORDER BY c.profile_user_id ASC, c.created_at DESC
+                `,
+                userIds,
+                (err2, commentRows) => {
+                    if (err2) {
+                        console.error("DB ERROR (comments):", err2.message);
+                        // still return profiles even if comments fail
+                        const out = profiles.map(({ userId, ...rest }) => rest);
+                        return res.json({ profiles: out });
+                    }
+
+                    // Group comments (limit 3 per profile)
+                    const map = new Map(); // profileUserId -> comments[]
+                    for (const r of (commentRows || [])) {
+                        const pid = r.profileUserId;
+                        if (!map.has(pid)) map.set(pid, []);
+                        const arr = map.get(pid);
+                        if (arr.length >= 3) continue;
+
+                        arr.push({
+                            commenterName: r.commenterName || "Wingman",
+                            text: r.text || "",
+                            createdAt: r.createdAt,
+                        });
+                    }
+
+                    // Attach comments
+                    const out = profiles.map(p => {
+                        const comments = map.get(p.userId) || [];
+                        const { userId, ...rest } = p; // remove helper field
+                        return { ...rest, wingmanComments: comments };
+                    });
+
+                    return res.json({ profiles: out });
+                }
+            );
         }
-
-        const profiles = (rows || [])
-            .map((r) => {
-                let photosArr = [];
-                try { photosArr = JSON.parse(r.photos || "[]"); } catch { photosArr = []; }
-                photosArr = photosArr.filter((x) => typeof x === "string" && x.trim().length > 0);
-
-                return {
-                    id: `u_${r.userId}`,
-                    name: r.name || "",
-                    age: r.age || "",
-                    gender: r.gender || "",
-                    bio: (r.bio || "").trim(),
-                    photos: photosArr,
-                };
-            })
-            .filter((p) => p.photos.length >= 1);
-
-        res.json({ profiles });
-    });
+    );
 });
+
 
 /* ================= DELETE ACCOUNT ================= */
 app.delete("/api/account", requireLogin, (req, res) => {

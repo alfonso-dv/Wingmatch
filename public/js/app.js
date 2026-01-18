@@ -435,12 +435,36 @@ document.addEventListener("DOMContentLoaded", () => {
         // Baut den Bio-HTML-Block nur dann, wenn wirklich Text vorhanden ist:
         const bioHtml = bioText ? `<div class="bio">${escapeHtml(bioText)}</div>` : "";
 
-        // Setzt den Info-Text als HTML (Name, Alter, Bio und kleiner Hinweis):
+        // ============================================================
+        // ✅ WINGMAN KOMMENTARE (werden vom Server als profile.wingmanComments geliefert)
+        // ============================================================
+
+        const wingmanComments = Array.isArray(profile.wingmanComments) ? profile.wingmanComments : [];
+
+        // optional: nur die letzten 3 anzeigen
+        const limitedComments = wingmanComments.slice(0, 3);
+
+        const commentsHtml = limitedComments.length
+            ? `
+        <div class="card-comments">
+          <div class="card-comments-title">Wingmen say</div>
+          ${limitedComments.map(c => `
+            <div class="card-comment">
+              <span class="card-comment-name">${escapeHtml(c.commenterName || "Wingman")}:</span>
+              <span class="card-comment-text">${escapeHtml(c.text || "")}</span>
+            </div>
+          `).join("")}
+        </div>
+      `
+            : "";
+
+        // Setzt den Info-Text als HTML (Name, Alter, Bio, Kommentare und kleiner Hinweis):
         info.innerHTML = `
       <div class="row">
         <div class="name">${escapeHtml(profile.name)} <span class="age">${escapeHtml(String(profile.age))}</span></div>
       </div>
       ${bioHtml}
+      ${commentsHtml}
       <div class="hint">Tap left/right for photos • Swipe to decide</div>
     `;
 
@@ -490,166 +514,94 @@ document.addEventListener("DOMContentLoaded", () => {
         // SWIPE – VORBEREITUNG FÜR DRAG (ZIEHEN MIT MAUS/FINGER)
         // ============================================================
 
-        // Merkt, ob gerade gezogen wird:
         let dragging = false;
-        // Merkt die Startposition beim Beginn des Ziehens:
         let startX = 0;
         let startY = 0;
-        // Merkt die Verschiebung (wie weit die Karte bewegt wurde):
         let dx = 0;
         let dy = 0;
 
-        // ============================================================
-        // BADGES ANZEIGEN – JE NACH RICHTUNG (LIKE / NOPE / SUPER LIKE)
-        // ============================================================
-
-        // Steuert, wie stark die Badges sichtbar sind, je nachdem wie weit gezogen wird:
         function setBadges(dx, dy) {
-            // Wenn nach rechts gezogen wird, wird LIKE sichtbar:
             badgeLike.style.opacity = dx > 20 ? Math.min(1, (dx - 20) / 120) : 0;
-            // Wenn nach links gezogen wird, wird NOPE sichtbar:
             badgeNope.style.opacity = dx < -20 ? Math.min(1, (-dx - 20) / 120) : 0;
-            // Wenn nach oben gezogen wird, wird SUPER LIKE sichtbar:
             badgeSuper.style.opacity = dy < -20 ? Math.min(1, (-dy - 20) / 120) : 0;
         }
 
-
-        // ============================================================
-// SWIPE – BEWEGEN, ENTSCHEIDEN, RAUSANIMIEREN, ZURUECKSETZEN
-// ============================================================
-
-// Bewegt die Karte passend zur Finger-/Mausbewegung und zeigt die Badges dazu:
         function applyTransform(dx, dy) {
-            // Rechnet eine leichte Drehung aus, damit es wie „Swipe“ aussieht:
             const rot = dx / 18;
-            // Verschiebt die Karte und dreht sie leicht:
             card.style.transform = `translate(${dx}px, ${dy}px) rotate(${rot}deg)`;
-            // Aktualisiert die Badge-Sichtbarkeit (LIKE/NOPE/SUPER LIKE):
             setBadges(dx, dy);
         }
 
-// Entscheidet, ob die Bewegung schon stark genug ist für LIKE/NOPE/SUPER:
         function decide(dx, dy) {
-            // Wenn weit genug nach rechts gezogen wurde, ist es LIKE:
             if (dx > 120) return ACTION.LIKE;
-            // Wenn weit genug nach links gezogen wurde, ist es NOPE:
             if (dx < -120) return ACTION.NOPE;
-            // Wenn weit genug nach oben gezogen wurde, ist es SUPER LIKE:
             if (dy < -120) return ACTION.SUPER;
-            // Wenn es nicht weit genug ist, wird keine Entscheidung getroffen:
             return null;
         }
 
-// Animiert die Karte aus dem Bild und löst danach das Entfernen der Top-Karte aus:
         function animateOut(action) {
-            // Schaltet eine kurze Animation ein, damit die Bewegung weich aussieht:
             card.style.transition = "transform 240ms ease";
-            // Bei LIKE fliegt die Karte nach rechts raus:
             if (action === ACTION.LIKE) card.style.transform = "translate(520px, 40px) rotate(18deg)";
-            // Bei NOPE fliegt die Karte nach links raus:
             if (action === ACTION.NOPE) card.style.transform = "translate(-520px, 40px) rotate(-18deg)";
-            // Bei SUPER LIKE fliegt die Karte nach oben raus:
             if (action === ACTION.SUPER) card.style.transform = "translate(0px, -620px) rotate(0deg)";
 
-            // Zeigt kurz einen Hinweis an, was gewählt wurde:
             showToast(`${action} • ${profile.name}`);
 
-            // ============================================================
-            // SWIPE AN BACKEND SENDEN – OHNE DIE UI ZU STOPPEN
-            // ============================================================
-
-            // Startet eine kleine „Neben“-Funktion, damit die UI sofort weitergeht:
             (async () => {
-                // Versucht die Server-Anfrage sicher abzufangen:
                 try {
-                    // Wandelt die interne Aktion (ACTION.*) in Text um (LIKE/NOPE/SUPER):
                     const serverAction =
                         action === ACTION.LIKE ? "LIKE" :
                             action === ACTION.NOPE ? "NOPE" :
                                 action === ACTION.SUPER ? "SUPER" : null;
 
-                    // Wenn keine gültige Aktion da ist, wird nichts gesendet:
                     if (!serverAction) return;
 
-                    // Sendet den Swipe ans Backend und wartet auf die Antwort:
                     const r = await sendSwipeToServer(profile, serverAction);
-                    // Wenn das Backend sagt „matched“, zeigt es eine Match-Nachricht:
                     if (r?.matched) showToast("It's a match! ✨");
                 } catch {
-                    // Ignoriert Netzwerk-Fehler, weil die UI schon weiter ist:
                     // ignore network errors; UI already moved on
                 }
             })();
 
-            // Entfernt die Top-Karte kurz nach der Animation, damit es sauber aussieht:
             setTimeout(removeTop, 180);
         }
 
-
-// Setzt die Karte wieder zurück in die Mitte, wenn kein Swipe entschieden wurde:
         function reset() {
-            // Aktiviert eine kurze Rück-Animation:
             card.style.transition = "transform 180ms ease";
-            // Setzt Position und Drehung wieder auf 0:
             applyTransform(0, 0);
-            // Schaltet die Animation danach wieder aus, damit Drag sofort reagiert:
             setTimeout(() => (card.style.transition = "transform 0ms"), 190);
         }
 
-// ============================================================
-// POINTER EVENTS – START, BEWEGEN, LOSLASSEN, ABBRUCH
-// ============================================================
-
-// Startet das Ziehen, sobald man die Karte berührt/anklickt:
         card.addEventListener("pointerdown", (e) => {
-            // Merkt: jetzt wird gezogen:
             dragging = true;
-            // Sorgt dafür, dass die Karte alle Pointer-Bewegungen weiter bekommt:
             card.setPointerCapture(e.pointerId);
-            // Merkt die Startposition des Fingers/der Maus:
             startX = e.clientX;
             startY = e.clientY;
-            // Setzt die aktuelle Verschiebung zurück:
             dx = 0;
             dy = 0;
-            // Schaltet Animation aus, damit es direkt und ohne Verzögerung folgt:
             card.style.transition = "transform 0ms";
         });
 
-// Bewegt die Karte mit, solange man zieht:
         card.addEventListener("pointermove", (e) => {
-            // Wenn gerade nicht gezogen wird, macht es nichts:
             if (!dragging) return;
-            // Rechnet die Verschiebung seit dem Start aus:
             dx = e.clientX - startX;
             dy = e.clientY - startY;
-            // Wendet die Verschiebung auf die Karte an:
             applyTransform(dx, dy);
         });
 
-// Wenn man loslässt, entscheidet es LIKE/NOPE/SUPER oder setzt zurück:
         card.addEventListener("pointerup", () => {
-            // Wenn gerade nicht gezogen wurde, macht es nichts:
             if (!dragging) return;
-            // Beendet den Zieh-Zustand:
             dragging = false;
-            // Entscheidet, ob die Bewegung schon stark genug war:
             const action = decide(dx, dy);
-            // Wenn eine Aktion entschieden wurde, fliegt die Karte raus:
             if (action) animateOut(action);
-            // Sonst springt die Karte zurück:
             else reset();
         });
 
-        // Wenn das Ziehen abgebrochen wird (zB. Maus verlässt Fenster), setzt es zurück:
         card.addEventListener("pointercancel", () => {
-            // Beendet den Zieh-Zustand:
             dragging = false;
-            // Setzt die Karte zurück:
             reset();
         });
 
-    // Gibt die fertige Karte zurück, damit sie ins Deck eingefügt werden kann:
         return card;
     }
 
