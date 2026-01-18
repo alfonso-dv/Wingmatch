@@ -765,7 +765,10 @@ document.addEventListener("DOMContentLoaded", () => {
             matchesList.innerHTML = matches.map(m => `
       <li class="search-result-item" data-other-id="${m.otherId}">
         <div class="search-result-top">
-          <div class="search-result-name">${escapeHtml(m.name || "Match")}</div>
+          <div class="search-result-name match-profile-link" data-profile-id="${m.otherId}">
+  ${escapeHtml(m.name || "Match")}
+</div>
+
           <div style="display:flex; gap:8px;">
             <button class="small-btn" data-open-chat="${m.otherId}">Chat</button>
             <button class="small-btn danger" data-unmatch="${m.otherId}">❌</button>
@@ -776,6 +779,16 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
       </li>
     `).join("");
+
+            matchesList.querySelectorAll(".match-profile-link").forEach(el => {
+                el.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    const otherId = Number(el.dataset.profileId);
+                    if (!otherId) return;
+                    window.location.href = `/profile/${otherId}`;
+                });
+            });
+
 
             // Chat button
             matchesList.querySelectorAll("[data-open-chat]").forEach(btn => {
@@ -1243,9 +1256,112 @@ document.addEventListener("DOMContentLoaded", () => {
         return data;
     }
 
+// =========================
+// "What my wingmen say about me" (comments on MY profile)
+// =========================
+    async function loadMyWingmenComments() {
+        const myCommentsList = document.getElementById("myCommentsList");
+        if (!myCommentsList) return;
+
+        myCommentsList.innerHTML = `
+      <li class="side-item">
+        <div class="side-name">Loading...</div>
+        <div class="side-sub"> </div>
+      </li>
+    `;
+
+        try {
+            // get my userId from session (you already have getMyUserId())
+            const me = await getMyUserId();
+            if (!me) {
+                myCommentsList.innerHTML = `
+              <li class="side-item">
+                <div class="side-name">Not logged in</div>
+                <div class="side-sub">Please re-login</div>
+              </li>
+            `;
+                return;
+            }
+
+            // IMPORTANT: we need commenter name too, so we call a NEW endpoint (see server.js change below)
+            const res = await fetch(`/api/me/comments`);
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+                myCommentsList.innerHTML = `
+              <li class="side-item">
+                <div class="side-name">Failed to load</div>
+                <div class="side-sub">${escapeHtml(data.message || "")}</div>
+              </li>
+            `;
+                return;
+            }
+
+            const comments = Array.isArray(data.comments) ? data.comments : [];
+
+            if (!comments.length) {
+                myCommentsList.innerHTML = `
+              <li class="side-item">
+                <div class="side-name">No comments yet</div>
+                <div class="side-sub">Your wingmen haven’t posted anything</div>
+              </li>
+            `;
+                return;
+            }
+
+            myCommentsList.innerHTML = comments.map(c => `
+          <li class="side-item">
+            <div class="side-item-row" style="align-items:flex-start; gap:10px;">
+              <div style="flex:1;">
+                <div class="side-name">${escapeHtml(c.commenterName || "Wingman")}</div>
+                <div class="side-sub">${escapeHtml(c.text || "")}</div>
+              </div>
+
+              ${c.canDelete ? `
+                <div class="side-item-actions">
+                  <button class="small-btn danger" data-delete-my-comment="${c.id}">Delete</button>
+                </div>
+              ` : ``}
+            </div>
+          </li>
+        `).join("");
+
+            // delete handlers
+            myCommentsList.querySelectorAll("[data-delete-my-comment]").forEach(btn => {
+                btn.addEventListener("click", async (e) => {
+                    e.stopPropagation();
+                    const commentId = Number(btn.getAttribute("data-delete-my-comment"));
+                    if (!commentId) return;
+
+                    const ok = confirm("Delete this comment from your profile?");
+                    if (!ok) return;
+
+                    const r = await fetch(`/api/me/comments/${commentId}`, { method: "DELETE" });
+                    const out = await r.json().catch(() => ({}));
+
+                    if (!r.ok) {
+                        alert(out.message || "Delete failed");
+                        return;
+                    }
+
+                    showToast("Comment deleted");
+                    loadMyWingmenComments();
+                });
+            });
+
+        } catch {
+            myCommentsList.innerHTML = `
+          <li class="side-item">
+            <div class="side-name">Failed to load</div>
+            <div class="side-sub">Network error</div>
+          </li>
+        `;
+        }
+    }
 
     // Load lists on page open (safe even if lists don't exist on other pages)
     refreshWingmanLists();
+    loadMyWingmenComments();
     document.querySelectorAll(".profile-link").forEach(el => {
         el.addEventListener("click", (e) => {
             e.stopPropagation(); // wichtig

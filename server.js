@@ -1570,6 +1570,55 @@ app.get("/api/profile/:userId/prompts", requireLogin, (req, res) => {
     });
 });
 
+app.get("/api/me/comments", requireLogin, (req, res) => {
+    const me = req.session.userId;
+
+    db.all(
+        `
+        SELECT
+            c.id,
+            c.comment AS text,
+            u.name AS commenterName,
+            1 AS canDelete
+        FROM profile_comments c
+        JOIN users u ON u.id = c.commenter_user_id
+        WHERE c.profile_user_id = ?
+        ORDER BY c.created_at DESC
+        `,
+        [me],
+        (err, rows) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ message: "DB error", comments: [] });
+            }
+            res.json({ comments: rows || [] });
+        }
+    );
+});
+
+app.delete("/api/me/comments/:commentId", requireLogin, (req, res) => {
+    const me = req.session.userId;
+    const commentId = Number(req.params.commentId);
+
+    if (!commentId || Number.isNaN(commentId)) {
+        return res.status(400).json({ message: "Invalid commentId" });
+    }
+
+    db.run(
+        `DELETE FROM profile_comments WHERE id = ? AND profile_user_id = ?`,
+        [commentId, me],
+        function (err) {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ message: "DB error" });
+            }
+            if (this.changes === 0) {
+                return res.status(404).json({ message: "Comment not found" });
+            }
+            res.json({ ok: true });
+        }
+    );
+});
 
 
 

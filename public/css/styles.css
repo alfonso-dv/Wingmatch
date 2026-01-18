@@ -772,3 +772,9 @@ body {
     padding: 10px;
     border: 1px solid #ddd;
 }
+
+.left-column{
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+}

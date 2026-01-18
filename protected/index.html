@@ -17,36 +17,48 @@
 
 <body>
 
-<!-- DESKTOP LAYOUT: left list | phone app | right list -->
+<!-- DESKTOP LAYOUT: left column | phone app | right list -->
 <div class="desktop-layout">
 
-    <!-- LEFT LIST: Wingmen (outside phone rectangle) -->
-    <aside class="side-list left">
-        <div class="side-header">
-            <h3>Wingmen</h3>
+    <!-- LEFT COLUMN: Wingmen + Comments (stacked) -->
+    <div class="left-column">
 
-            <div class="side-header-actions">
-                <button id="addWingmanBtn" class="mini-btn" title="Add Wingman">＋</button>
-                <button id="wingmenInfoBtn" class="info-btn" title="Info">ℹ️</button>
+        <!-- LEFT LIST: Wingmen -->
+        <aside class="side-list left">
+            <div class="side-header">
+                <h3>Wingmen</h3>
+
+                <div class="side-header-actions">
+                    <button id="addWingmanBtn" class="mini-btn" title="Add Wingman">＋</button>
+                    <button id="wingmenInfoBtn" class="info-btn" title="Info">ℹ️</button>
+                </div>
             </div>
-        </div>
 
+            <ul class="side-items" id="wingmenList">
+                <li class="side-item">
+                    <div class="side-name">Alex</div>
+                    <div class="side-sub">Online</div>
+                </li>
+                <li class="side-item">
+                    <div class="side-name">Sam</div>
+                    <div class="side-sub">Last seen: 2h ago</div>
+                </li>
+                <li class="side-item">
+                    <div class="side-name">Jordan</div>
+                    <div class="side-sub">New wingman</div>
+                </li>
+            </ul>
+        </aside>
 
-        <ul class="side-items" id="wingmenList">
-            <li class="side-item">
-                <div class="side-name">Alex</div>
-                <div class="side-sub">Online</div>
-            </li>
-            <li class="side-item">
-                <div class="side-name">Sam</div>
-                <div class="side-sub">Last seen: 2h ago</div>
-            </li>
-            <li class="side-item">
-                <div class="side-name">Jordan</div>
-                <div class="side-sub">New wingman</div>
-            </li>
-        </ul>
-    </aside>
+        <!-- LEFT LIST: What my wingmen say about me (directly under Wingmen) -->
+        <aside class="side-list left">
+            <div class="side-header">
+                <h3>What my wingmen say about me:</h3>
+            </div>
+            <ul class="side-items" id="myCommentsList"></ul>
+        </aside>
+
+    </div>
 
     <!-- PHONE APP (center column) -->
     <div class="app">
@@ -70,7 +82,6 @@
 
                 <!-- Messages -->
                 <button id="messagesBtn" class="icon-btn" title="Messages">💬</button>
-
 
                 <button id="logoutBtn" class="icon-btn logout" title="Logout">Logout</button>
             </div>
@@ -222,8 +233,6 @@
         <button id="closeMessages" class="close-btn">Close</button>
     </div>
 </div>
-
-
 
 <script src="/js/app.js"></script>
 </body>
