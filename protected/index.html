@@ -60,68 +60,114 @@
 
     </div>
 
-    <!-- PHONE APP (center column) -->
+    <!-- ============================================================ -->
+    <!-- MITTLERE SPALTE: „PHONE APP“ (SWIPE-BEREICH)               -->
+    <!-- ============================================================ -->
+    <!-- Sieht aus wie ein Handy in der Mitte der Seite -->
+    <!-- Hier passiert das eigentliche Swipen (Like/Nope/Super) -->
+
     <div class="app">
 
+        <!-- ============================================================ -->
+        <!-- OBERER BALKEN (TOPBAR) -->
+        <!-- ============================================================ -->
+        <!-- Enthält: Profil, Logo, Date Roulette, Settings, Messages, Logout -->
         <header class="topbar">
+
+            <!-- LINKER TEIL DER TOPBAR -->
             <div class="top-actions">
+                <!-- Öffnet das eigene Profil (Create/Edit Profile Seite) -->
                 <button id="profileBtn" class="icon-btn" title="Profile">👤</button>
             </div>
 
+            <!-- MITTE: LOGO UND NAME -->
             <div class="brand">
+                <!-- Großes W als Logo -->
                 <div class="logo">W</div>
+                <!-- App-Name daneben -->
                 <div class="title">Wingmatch</div>
             </div>
 
+            <!-- RECHTER TEIL DER TOPBAR -->
             <div class="top-actions">
-                <!-- Date Roulette Button -->
+
+                <!-- Öffnet das Date-Roulette-Popup -->
                 <button id="rouletteBtn" class="icon-btn" title="Date Roulette">🎲</button>
 
-                <!-- Settings -->
+                <!-- Öffnet Einstellungen (Settings Modal) -->
                 <button id="settingsBtn" class="icon-btn" title="Settings">⚙️</button>
 
-                <!-- Messages -->
+                <!-- Öffnet Nachrichten / Matches / Chat -->
                 <button id="messagesBtn" class="icon-btn" title="Messages">💬</button>
 
+                <!-- Loggt den Nutzer aus -->
                 <button id="logoutBtn" class="icon-btn logout" title="Logout">Logout</button>
             </div>
         </header>
 
+        <!-- ============================================================ -->
+        <!-- HAUPTBEREICH (SWIPE-STAGE) -->
+        <!-- ============================================================ -->
         <main class="stage">
+
+            <!-- Hier werden die Swipe-Karten (Profile) per JS hineingeladen -->
             <div id="deck" class="deck"></div>
 
+            <!-- Leerer Zustand, wenn keine Profile mehr da sind -->
             <div id="empty" class="empty hidden">
                 <h2>You’re all caught up 🎉</h2>
                 <p>Reload demo profiles to keep swiping.</p>
+                <!-- Lädt Demo-Profile neu -->
                 <button id="reload" class="reload-btn">Reload</button>
             </div>
 
+            <!-- Toast-Nachricht (kurze Popup-Meldung unten) -->
             <div id="toast" class="toast hidden"></div>
         </main>
 
+        <!-- ============================================================ -->
+        <!-- UNTERE AKTIONS-BUTTONS (SWIPE BUTTONS) -->
+        <!-- ============================================================ -->
         <footer class="actions">
+            <!-- Swipe nach links = Nope -->
             <button id="nope" class="action-btn nope" aria-label="Nope">✖️</button>
+
+            <!-- Swipe nach oben = Super Like -->
             <button id="super" class="action-btn super" aria-label="Super Like">⭐</button>
+
+            <!-- Swipe nach rechts = Like -->
             <button id="like" class="action-btn like" aria-label="Like">❤️</button>
         </footer>
     </div>
 
-    <!-- RIGHT LIST: Best Friends (outside phone rectangle) -->
+    <!-- ============================================================ -->
+    <!-- RECHTE SPALTE: BEST FRIENDS LISTE -->
+    <!-- ============================================================ -->
+    <!-- Steht außerhalb des „Handys“ rechts -->
+
     <aside class="side-list right">
+
         <div class="side-header">
+            <!-- Titel der Liste -->
             <h3>Best Friends</h3>
+
+            <!-- Info-Button erklärt, was Best Friends sind -->
             <button id="bestFriendsInfoBtn" class="info-btn" title="Info">ℹ️</button>
         </div>
 
+        <!-- Liste der Best Friends (wird später per JS ersetzt) -->
         <ul class="side-items" id="bestFriendsList">
+
             <li class="side-item">
                 <div class="side-name">Mia</div>
                 <div class="side-sub">Your #1 hype friend</div>
             </li>
+
             <li class="side-item">
                 <div class="side-name">Chris</div>
                 <div class="side-sub">Gives great advice</div>
             </li>
+
             <li class="side-item">
                 <div class="side-name">Lina</div>
                 <div class="side-sub">Always down for food</div>
@@ -131,98 +177,168 @@
 
 </div>
 
-<!-- Date Roulette Modal -->
+<!-- ============================================================ -->
+<!-- DATE ROULETTE MODAL (POPUP) -->
+<!-- ============================================================ -->
+<!-- Erscheint, wenn man auf 🎲 klickt -->
+
 <div id="rouletteModal" class="modal hidden">
+
     <div class="modal-card">
+
+        <!-- Schließt das Roulette-Fenster -->
         <button id="closeRouletteX" class="close-x">✕</button>
+
         <h2>Date Roulette</h2>
 
         <p>What are you in the mood for?</p>
 
+        <!-- Option 1: Ideen für Dates -->
         <button class="roulette-option" id="dateIdeasBtn">Date Ideas</button>
+
+        <!-- Option 2: Essen & Restaurants -->
         <button class="roulette-option" id="foodDiningBtn">Food &amp; Dining</button>
 
+        <!-- Schließen-Button unten -->
         <button id="closeRoulette" class="close-btn">Close</button>
     </div>
 </div>
 
-<!-- Roulette Spin Modal -->
+
+<!-- ============================================================ -->
+<!-- ROULETTE SPIN MODAL (DREH-RAD ERGEBNIS)                     -->
+<!-- ============================================================ -->
+<!-- Wird geöffnet, nachdem man „Date Ideas“ oder „Food & Dining“ gewählt hat -->
+
 <div id="spinModal" class="modal hidden">
     <div class="modal-card roulette-spin">
+
+        <!-- Geht zurück zur Auswahl (Date Ideas / Food & Dining) -->
         <button id="backToChoice" class="back-arrow">←</button>
+
+        <!-- Schließt das Spin-Fenster komplett -->
         <button id="closeSpin" class="close-x">✕</button>
 
+        <!-- Titel des Roulette-Bereichs (wird per JS geändert) -->
         <h2 id="spinTitle">Roulette</h2>
 
+        <!-- Zeigt das zufällige Ergebnis an -->
         <div id="spinResult" class="spin-result">Tap Spin</div>
 
+        <!-- Startet die zufällige Auswahl -->
         <button id="spinBtn" class="spin-btn">Spin</button>
     </div>
 </div>
 
-<!-- Settings Modal -->
+<!-- ============================================================ -->
+<!-- SETTINGS MODAL (EINSTELLUNGEN)                              -->
+<!-- ============================================================ -->
+<!-- Öffnet sich über das ⚙️ Symbol oben -->
+
 <div id="settingsModal" class="modal hidden">
     <div class="modal-card">
+
+        <!-- Schließt das Settings-Fenster -->
         <button id="closeSettingsX" class="close-x">✕</button>
 
         <h2>Settings</h2>
 
+        <!-- Löscht das gesamte Profil -->
         <button id="deleteAccountBtn" class="roulette-option">
             Delete Profile
         </button>
 
+        <!-- Schließt das Settings-Fenster -->
         <button id="closeSettings" class="close-btn">Close</button>
     </div>
 </div>
 
-<!-- Info Modal (used by Wingmen + Best Friends info buttons) -->
+<!-- ============================================================ -->
+<!-- INFO MODAL (ERKLÄRUNGEN FÜR WINGMEN / BEST FRIENDS)         -->
+<!-- ============================================================ -->
+<!-- Wird von ℹ️ Buttons bei Wingmen und Best Friends genutzt -->
+
 <div id="infoModal" class="modal hidden">
     <div class="modal-card">
+
+        <!-- Schließt das Info-Fenster -->
         <button id="closeInfoX" class="close-x">✕</button>
 
+        <!-- Titel wird per JS gesetzt -->
         <h2 id="infoTitle">Info</h2>
+
+        <!-- Erklärungstext wird per JS gesetzt -->
         <p id="infoText">Placeholder info text.</p>
 
+        <!-- Schließt das Info-Fenster -->
         <button id="closeInfo" class="close-btn">Close</button>
     </div>
 </div>
 
-<!-- Add Wingman Modal -->
+<!-- ============================================================ -->
+<!-- ADD WINGMAN MODAL (WINGMAN HINZUFÜGEN)                      -->
+<!-- ============================================================ -->
+<!-- Öffnet sich über das „＋“ Symbol bei Wingmen -->
+
 <div id="addWingmanModal" class="modal hidden">
     <div class="modal-card">
+
+        <!-- Schließt das Add-Wingman-Fenster -->
         <button id="closeAddWingmanX" class="close-x">✕</button>
 
         <h2>Add Wingman</h2>
+
+        <!-- Kurze Erklärung für den Nutzer -->
         <p>Search by name or email, then add them as your wingman.</p>
 
+        <!-- Suchfeld für Nutzer -->
         <input id="wingmanSearchInput" class="text-input" type="text" placeholder="Search users..." />
+
+        <!-- Hinweis unter dem Suchfeld -->
         <div id="wingmanSearchHint" class="small-hint">Type at least 2 characters.</div>
 
+        <!-- Hier erscheinen die Suchergebnisse -->
         <ul id="wingmanSearchResults" class="search-results"></ul>
 
+        <!-- Schließt das Add-Wingman-Fenster -->
         <button id="closeAddWingman" class="close-btn">Close</button>
     </div>
 </div>
 
-<!-- Messages / Matches Modal -->
+<!-- ============================================================ -->
+<!-- MESSAGES / MATCHES MODAL (CHAT)                             -->
+<!-- ============================================================ -->
+<!-- Öffnet sich über das 💬 Symbol oben -->
+
 <div id="messagesModal" class="modal hidden">
     <div class="modal-card">
+
+        <!-- Schließt das Nachrichten-Fenster -->
         <button id="closeMessagesX" class="close-x">✕</button>
+
         <h2>Messages</h2>
 
+        <!-- Layout mit zwei Spalten: links Matches, rechts Chat -->
         <div class="chat-layout">
-            <!-- Matches list -->
+
+            <!-- LINKER BEREICH: MATCHES LISTE -->
             <div class="chat-sidebar">
                 <div class="chat-sidebar-title">Your Matches</div>
+
+                <!-- Hier werden Matches per JS eingefügt -->
                 <ul id="matchesList" class="search-results"></ul>
             </div>
 
-            <!-- Chat panel -->
+            <!-- RECHTER BEREICH: CHAT -->
             <div class="chat-panel">
+
+                <!-- Überschrift des Chats (zeigt aktiven Match) -->
                 <div id="chatHeader" class="chat-header">Select a match</div>
 
+                <!-- Nachrichtenverlauf -->
                 <div id="chatMessages" class="chat-messages"></div>
 
+                <!-- Eingabefeld + Senden-Button -->
                 <div class="chat-input-row">
                     <input id="chatInput" class="text-input" type="text" placeholder="Type a message..." />
                     <button id="sendChatBtn" class="small-btn">Send</button>
@@ -230,10 +346,12 @@
             </div>
         </div>
 
+        <!-- Schließt das Messages-Fenster -->
         <button id="closeMessages" class="close-btn">Close</button>
     </div>
 </div>
 
+<!-- Lädt die Haupt-JavaScript-Datei für die App -->
 <script src="/js/app.js"></script>
 </body>
 </html>

@@ -1,77 +1,159 @@
+<!-- ============================================================ -->
+<!-- PROFILE VIEW SEITE – PROFIL ANZEIGEN -->
+<!-- ============================================================ -->
+
 <!doctype html>
 <html lang="en">
 <head>
+    <!-- Setzt die Zeichencodierung, damit Sonderzeichen richtig angezeigt werden: -->
     <meta charset="UTF-8" />
+
+    <!-- Setzt den Titel der Seite oben im Browser-Tab: -->
     <title>Profile</title>
+
+    <!-- Lädt die eigene Styles-Datei für Wingmatch: -->
     <link rel="stylesheet" href="/css/styles.css" />
 </head>
 
 <body>
+<!-- ============================================================ -->
+<!-- SEITENBEREICH – PROFIL ZENTRIERT -->
+<!-- ============================================================ -->
+
 <div class="page-center">
     <div class="profile-card">
 
+        <!-- ============================================================ -->
+        <!-- PROFIL KOPF – NAME + BASIS DATEN -->
+        <!-- ============================================================ -->
+
+        <!-- Zeigt den Namen der Person an (wird per JS gefüllt): -->
         <h2 id="profileName"></h2>
+
+        <!-- Zeigt Alter, Geschlecht, Standort usw. (wird per JS gefüllt): -->
         <div id="profileMeta" class="profile-meta"></div>
 
+        <!-- ============================================================ -->
+        <!-- FOTOS – GRID -->
+        <!-- ============================================================ -->
+
+        <!-- Zeigt die Fotos als Gitter (wird per JS gefüllt): -->
         <div id="profilePhotos" class="photo-grid"></div>
 
+        <!-- ============================================================ -->
+        <!-- ABOUT – BIO -->
+        <!-- ============================================================ -->
+
         <div class="profile-section">
+            <!-- Überschrift für Bio: -->
             <h4>About</h4>
+            <!-- Box für Bio-Text (wird per JS gefüllt): -->
             <div id="profileBio" class="profile-box"></div>
         </div>
 
+        <!-- ============================================================ -->
+        <!-- HOBBIES -->
+        <!-- ============================================================ -->
+
         <div class="profile-section">
+            <!-- Überschrift für Hobbies: -->
             <h4>Hobbies</h4>
+            <!-- Box für Hobbies (wird per JS gefüllt): -->
             <div id="profileHobbies" class="profile-box"></div>
         </div>
 
+        <!-- ============================================================ -->
+        <!-- ZODIAC – STERNZEICHEN -->
+        <!-- ============================================================ -->
+
         <div class="profile-section">
+            <!-- Überschrift für Sternzeichen: -->
             <h4>Zodiac</h4>
+            <!-- Box für Sternzeichen (wird per JS gefüllt): -->
             <div id="profileZodiac" class="profile-box"></div>
         </div>
 
+        <!-- ============================================================ -->
+        <!-- LOOKING FOR – ICH SUCHE -->
+        <!-- ============================================================ -->
+
         <div class="profile-section">
+            <!-- Überschrift für „Looking for“: -->
             <h4>Looking for</h4>
+            <!-- Box für „Looking for“ (wird per JS gefüllt): -->
             <div id="profileLookingFor" class="profile-box"></div>
         </div>
 
+        <!-- ============================================================ -->
+        <!-- MORE – EXTRA -->
+        <!-- ============================================================ -->
+
         <div class="profile-section">
+            <!-- Überschrift für Extra-Infos: -->
             <h4>More</h4>
+            <!-- Box für Extra-Text (wird per JS gefüllt): -->
             <div id="profileExtra" class="profile-box"></div>
         </div>
 
-        <!-- PROMPTS -->
+        <!-- ============================================================ -->
+        <!-- PROMPTS – ZUSATZFRAGEN -->
+        <!-- ============================================================ -->
+
+        <!-- Container für Prompts (wird per JS gefüllt): -->
         <div id="profilePrompts"></div>
 
-        <!-- WINGMAN COMMENTS -->
+        <!-- ============================================================ -->
+        <!-- WINGMAN COMMENTS – KOMMENTARE ZU DIESEM PROFIL -->
+        <!-- ============================================================ -->
+
         <section id="wingmanCommentsSection" class="mt-4">
+            <!-- Titel vom Kommentarbereich: -->
             <h3>Wingman Comments 💬</h3>
+
+            <!-- ============================================================ -->
+            <!-- KOMMENTAR EINGABE (NUR FÜR WINGMAN SICHTBAR) -->
+            <!-- ============================================================ -->
 
             <!-- COMMENT INPUT (nur Wingman sichtbar) -->
             <div id="wingmanCommentBox" class="hidden">
-        <textarea id="wingmanCommentText"
-                  placeholder="Say something nice about your friend…"></textarea>
+                <!-- Textfeld, wo der Wingman etwas schreibt: -->
+                <textarea id="wingmanCommentText"
+                          placeholder="Say something nice about your friend…"></textarea>
+                <!-- Button zum Absenden vom Kommentar: -->
                 <button id="postWingmanComment">Post</button>
             </div>
 
-            <!-- COMMENTS LIST -->
+            <!-- ============================================================ -->
+            <!-- KOMMENTAR LISTE (FÜR ALLE SICHTBAR) -->
+            <!-- ============================================================ -->
+
+            <!-- Hier werden alle Kommentare angezeigt (wird per JS gefüllt): -->
             <div id="wingmanCommentsList"></div>
 
-            <!-- NO COMMENTS -->
+            <!-- ============================================================ -->
+            <!-- HINWEIS, WENN ES KEINE KOMMENTARE GIBT -->
+            <!-- ============================================================ -->
+
+            <!-- Dieser Text wird sichtbar, wenn die Kommentar-Liste leer ist: -->
             <p id="noWingmanComments" class="hidden">No comments yet</p>
         </section>
 
     </div>
 
+    <!-- ============================================================ -->
+    <!-- ZURÜCK BUTTON -->
+    <!-- ============================================================ -->
+
+    <!-- Geht im Browser eine Seite zurück: -->
     <button onclick="window.history.back()">← Back</button>
 
 </div>
 
+<!-- ============================================================ -->
+<!-- SCRIPT LADEN -->
+<!-- ============================================================ -->
 
-
-
-
-
+<!-- Lädt das JavaScript, das Profil-Daten und Kommentare lädt: -->
 <script src="/js/profile-view.js"></script>
 </body>
 </html>

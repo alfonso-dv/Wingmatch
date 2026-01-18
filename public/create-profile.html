@@ -1,20 +1,30 @@
+<!-- ============================================================ -->
+<!-- CREATE PROFILE SEITE – PROFIL ERSTELLEN / BEARBEITEN -->
+<!-- ============================================================ -->
+
 <!-- create-profile.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Setzt die Zeichencodierung, damit Sonderzeichen richtig angezeigt werden: -->
     <meta charset="UTF-8">
+
+    <!-- Setzt den Titel der Seite oben im Browser-Tab: -->
     <title>Create Profile – Wingmatch</title>
 
-    <!-- Bootstrap -->
+    <!-- Lädt Bootstrap für Layout, Formulare und Buttons: -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Lädt die eigene Styles-Datei für Wingmatch: -->
     <link rel="stylesheet" href="/css/styles.css">
 
     <style>
+        /* Setzt den rosa Farbverlauf für die Create-Profile-Seite: */
         body.create-profile-page {
             min-height: 100vh;
             background: linear-gradient(135deg, #ffdde1, #ee9ca7);
         }
 
+        /* Gestaltet die weiße Profil-Karte in der Mitte: */
         .wm-card {
             background: #fff;
             color: #111;
@@ -25,7 +35,8 @@
             position: relative;
         }
 
-                #skipBtn {
+        /* Positioniert den Skip-Button oben rechts (nur beim ersten Erstellen): */
+        #skipBtn {
             position: absolute;
             top: 10px;
             right: 14px;
@@ -33,7 +44,8 @@
             color: #ff4d6d;
         }
 
-        /* NEW: Close-X for edit-mode (homepage) */
+        /* NEW: Close-X für Bearbeitungsmodus (kommt von der Homepage) */
+        /* Positioniert das X oben rechts zum Schließen: */
         #closeBtn {
             position: absolute;
             top: 10px;
@@ -44,35 +56,55 @@
             font-size: 20px;
             line-height: 1;
         }
-
     </style>
 </head>
 
+<!-- Zentriert die Profil-Karte horizontal, lässt sie oben etwas Platz: -->
 <body class="create-profile-page d-flex justify-content-center">
+
+<!-- ============================================================ -->
+<!-- PROFIL KARTE -->
+<!-- ============================================================ -->
 
 <div class="wm-card shadow p-4 my-4">
 
-    <!-- Skip (ONLY onboarding/register flow) -->
+    <!-- Skip Button (NUR beim ersten Registrieren / Onboarding sichtbar): -->
     <button id="skipBtn" type="button" class="btn btn-link">Skip</button>
 
-    <!-- NEW: Close X (ONLY homepage edit flow) -->
+    <!-- NEW: Close X (NUR sichtbar, wenn man von der Homepage bearbeitet): -->
     <button id="closeBtn" type="button" class="btn btn-link" style="display:none;">✕</button>
 
-    <!-- Header -->
+    <!-- ============================================================ -->
+    <!-- HEADER BEREICH -->
+    <!-- ============================================================ -->
+
     <div class="text-center mb-3">
+        <!-- Markenname oben in Pink: -->
         <div style="font-weight:800;font-size:24px;color:#ff4d6d;">Wingmatch</div>
+        <!-- Seitentitel: -->
         <h4>Create Profile</h4>
 
-        <!-- NEW: helper text gets removed in edit-mode via JS -->
+        <!-- Hilfetext, der im Bearbeitungsmodus per JS entfernt wird: -->
         <p id="helperText" class="text-muted small">You can skip and edit later.</p>
     </div>
 
+    <!-- ============================================================ -->
+    <!-- PROFIL FORMULAR -->
+    <!-- ============================================================ -->
+
     <form id="profileForm">
 
-        <!-- REQUIRED -->
+        <!-- ============================================================ -->
+        <!-- REQUIRED – PFLICHTFELDER -->
+        <!-- ============================================================ -->
+
+        <!-- Name Eingabefeld (Pflicht): -->
         <input id="name" class="form-control mb-2" placeholder="Name" required>
+
+        <!-- Alter Eingabefeld (Pflicht, mindestens 18): -->
         <input id="age" type="number" min="18" class="form-control mb-2" placeholder="Age" required>
 
+        <!-- Geschlecht Auswahl (Pflicht): -->
         <select id="gender" class="form-select mb-2" required>
             <option value="" disabled selected>Select gender</option>
             <option>Female</option>
@@ -81,47 +113,77 @@
             <option>Other</option>
         </select>
 
+        <!-- Standort Eingabefeld (Pflicht): -->
         <input id="location" class="form-control mb-3" placeholder="Location" required>
 
-        <!-- OPTIONAL BASIC -->
+        <!-- ============================================================ -->
+        <!-- OPTIONAL BASIC – OPTIONALE BASIS-INFOS -->
+        <!-- ============================================================ -->
+
+        <!-- Bio Textfeld (optional): -->
         <textarea id="bio" class="form-control mb-1" rows="3" placeholder="About me (optional)"></textarea>
+        <!-- Clear Button löscht Bio: -->
         <button type="button" class="btn btn-link text-danger clear-btn" data-target="bio">Clear</button>
 
+        <!-- Hobbies Eingabefeld (optional): -->
         <input id="hobbies" class="form-control mb-1" placeholder="Hobbies (optional)">
 
+        <!-- Clear Button löscht Hobbies: -->
         <button type="button" class="btn btn-link text-danger clear-btn" data-target="hobbies">Clear</button>
 
-        <!--  My Pictures Button (ONLY homepage edit-mode) -->
+        <!-- ============================================================ -->
+        <!-- MY PICTURES BUTTON (NUR IM BEARBEITUNGSMODUS) -->
+        <!-- ============================================================ -->
+
+        <!-- Button führt zur Bilder-Verwaltung (nur sichtbar auf Homepage im Edit-Modus): -->
         <button id="managePics" type="button" class="btn btn-link w-100 small fw-bold" style="display:none;">
             My Pictures
         </button>
 
+        <!-- ============================================================ -->
+        <!-- PROMPTS – WEITERE FRAGEN -->
+        <!-- ============================================================ -->
 
-        <!-- PROMPTS -->
         <div class="mt-3">
+            <!-- Button zum Ein- und Ausklappen der Prompts: -->
             <button type="button" id="togglePromptsBtn" class="btn btn-link fw-bold p-0">
                 Tell us more about yourself ▼
             </button>
+            <!-- Container, in den die Prompts per JS geladen werden: -->
             <div id="promptsContainer" class="mt-2"></div>
         </div>
 
-        <!-- EXTRA PROFILE INFO -->
+<!-- ============================================================ -->
+<!-- EXTRA PROFILE INFO – ZUSÄTZLICHE OPTIONALE FELDER -->
+<!-- ============================================================ -->
+
         <div class="mt-3">
 
+            <!-- Sternzeichen (optional): -->
             <input id="zodiac" class="form-control mb-1" placeholder="Zodiac sign (optional)">
+            <!-- Clear Button löscht Sternzeichen: -->
             <button type="button" class="btn btn-link text-danger clear-btn" data-target="zodiac">Clear</button>
 
+            <!-- „Ich suche…“ Feld (optional): -->
             <input id="lookingFor" class="form-control mb-1" placeholder="Looking for (optional)">
+            <!-- Clear Button löscht dieses Feld: -->
             <button type="button" class="btn btn-link text-danger clear-btn" data-target="lookingFor">Clear</button>
 
+            <!-- Extra Textfeld (optional): -->
             <textarea id="extra" class="form-control mb-1" rows="2" placeholder="Extra (optional)"></textarea>
+            <!-- Clear Button löscht Extra: -->
             <button type="button" class="btn btn-link text-danger clear-btn" data-target="extra">Clear</button>
         </div>
 
-        <!-- PREFERENCES -->
+        <!-- ============================================================ -->
+        <!-- PREFERENCES – ENTDECKUNGS-EINSTELLUNGEN -->
+        <!-- ============================================================ -->
+
         <div class="mt-3">
+            <!-- Überschrift für den Bereich: -->
             <h5 class="text-center">Preferences</h5>
 
+            <!-- Auswahl, wen man sehen möchte (optional): -->
             <select id="interestedIn" class="form-select mb-2">
                 <option value="">Interested in (optional)</option>
                 <option>Men</option>
@@ -131,42 +193,66 @@
             </select>
 
             <div class="mb-2">
+                <!-- Zeile mit Beschriftung und aktuell gewähltem Alter: -->
                 <div class="d-flex justify-content-between small">
                     <span>Preferred age</span>
+                    <!-- Zeigt den aktuell gewählten Altersbereich an: -->
                     <span id="ageRangeLabel">18 - 100</span>
                 </div>
+
+                <!-- Zwei Schieberegler für Mindest- und Höchstalter: -->
                 <div class="d-flex gap-2">
+                    <!-- Mindestalter, das man sehen möchte: -->
                     <input id="prefAgeMin" type="range" min="18" max="100" value="18" class="form-range">
+                    <!-- Höchstalter, das man sehen möchte: -->
                     <input id="prefAgeMax" type="range" min="18" max="100" value="100" class="form-range">
                 </div>
             </div>
         </div>
 
-        <!-- SUBMIT -->
+        <!-- ============================================================ -->
+        <!-- SUBMIT – PROFIL SPEICHERN -->
+        <!-- ============================================================ -->
+
+        <!-- Speichert das Profil und geht weiter: -->
         <button type="submit" class="btn btn-danger w-100 mt-3">
             Save & Continue
         </button>
 
+        <!-- Bereich für Erfolg- oder Fehlermeldungen nach dem Speichern: -->
         <div id="result" class="text-center small fw-bold mt-2"></div>
 
 
-        <!-- =========================
-     WINGMAN COMMENTS
-========================= -->
-        <section id="wingmanCommentsSection" class="mt-4 hidden">
-            <h3>Wingman Comments 💬</h3>
+        <!-- ============================================================ -->
+        <!-- WINGMAN COMMENTS – KOMMENTARE AUF DIESEM PROFIL -->
+        <!-- ============================================================ -->
 
-            <!-- Only visible if viewer is a wingman -->
+        <section id="wingmanCommentsSection" class="mt-4 hidden">
+            <!-- Titel des Kommentarbereichs: -->
+            <h3>Wingman Comments </h3>
+
+            <!-- ============================================================ -->
+            <!-- KOMMENTARFELD (NUR FÜR WINGMEN SICHTBAR) -->
+            <!-- ============================================================ -->
+
+            <!-- Dieser Bereich ist nur sichtbar, wenn der Betrachter ein Wingman ist: -->
             <div id="wingmanCommentBox" class="hidden">
-        <textarea id="wingmanCommentText"
-                  placeholder="Say something nice about your friend…"
-                  class="form-control mb-2"></textarea>
+                <!-- Textfeld zum Schreiben eines Kommentars: -->
+                <textarea id="wingmanCommentText"
+                          placeholder="Say something nice about your friend…"
+                          class="form-control mb-2"></textarea>
+
+                <!-- Button zum Absenden des Kommentars: -->
                 <button id="postWingmanComment" class="btn btn-primary btn-sm">
                     Post comment
                 </button>
             </div>
 
-            <!-- Visible to everyone -->
+            <!-- ============================================================ -->
+            <!-- KOMMENTARLISTE (FÜR ALLE SICHTBAR) -->
+            <!-- ============================================================ -->
+
+            <!-- Liste mit allen Kommentaren auf diesem Profil: -->
             <ul id="profileCommentsList" class="mt-3"></ul>
         </section>
 
@@ -174,6 +260,7 @@
     </form>
 </div>
 
+<!-- Lädt das JavaScript für Create-Profile (Speichern, Laden, Prompts usw.): -->
 <script src="/js/create-profile.js"></script>
 </body>
 </html>

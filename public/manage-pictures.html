@@ -1,109 +1,181 @@
+<!-- ============================================================ -->
+<!-- MY PICTURES SEITE – BILDER ANZEIGEN, HOCHLADEN, LÖSCHEN -->
+<!-- ============================================================ -->
+
 <!-- manage-pictures.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Setzt die Zeichencodierung, damit Sonderzeichen richtig angezeigt werden: -->
     <meta charset="UTF-8">
+
+    <!-- Setzt den Titel der Seite oben im Browser-Tab: -->
     <title>My Pictures – Wingmatch</title>
+
+    <!-- Macht die Seite auf Handys richtig skalierbar: -->
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- Bootstrap 5 -->
+    <!-- Lädt Bootstrap für Layout, Formulare und Buttons: -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Lädt die eigene Styles-Datei für Wingmatch: -->
     <link rel="stylesheet" href="/css/styles.css">
 
     <style>
+        /* Setzt den rosa Farbverlauf als Hintergrund für die Bilder-Seite: */
         body.pics-page {
-          min-height: 100vh;
-          background: linear-gradient(135deg, #ffdde1, #ee9ca7);
-        }
-        .wm-card {
-          background: #ffffff !important;
-          color: #111 !important;
-          border-radius: 20px !important;
-          position: relative;
-          z-index: 5;
-          width: 420px;
-          max-width: 92vw;
-          padding: 18px;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #ffdde1, #ee9ca7);
         }
 
+        /* Gestaltet die weiße Karte, in der alles drin ist: */
+        .wm-card {
+            background: #ffffff !important;
+            color: #111 !important;
+            border-radius: 20px !important;
+            position: relative;
+            z-index: 5;
+            width: 420px;
+            max-width: 92vw;
+            padding: 18px;
+        }
+
+        /* Obere Navigation: Pfeil links, Titel in der Mitte, X rechts: */
         .topnav {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
         }
+
+        /* Style für die Navigations-Buttons (← und ✕): */
         .nav-btn {
-          border: none;
-          background: transparent;
-          font-size: 20px;
-          color: #ff4d6d;
-          font-weight: 800;
-          line-height: 1;
+            border: none;
+            background: transparent;
+            font-size: 20px;
+            color: #ff4d6d;
+            font-weight: 800;
+            line-height: 1;
         }
+
+        /* Wenn ein Button deaktiviert ist, wird er blasser: */
         .nav-btn:disabled { opacity: .35; }
 
+        /* Style für das Bild selbst (Vorschau): */
         .pic {
-          width: 100%;
-          height: 220px;
-          object-fit: contain;      /* kein Abschneiden */
-          object-position: center;
-          border-radius: 16px;
-          background: #f2f2f2;
-          display: block;
-          margin-bottom: 10px;
+            width: 100%;
+            height: 220px;
+            object-fit: contain;      /* kein Abschneiden */
+            object-position: center;
+            border-radius: 16px;
+            background: #f2f2f2;
+            display: block;
+            margin-bottom: 10px;
         }
 
+        /* Ein Slot ist ein „Block“ für ein Bild (Picture 1 / Picture 2): */
         .slot {
-          border: 1px solid #eee;
-          border-radius: 16px;
-          padding: 12px;
-          margin-bottom: 12px;
+            border: 1px solid #eee;
+            border-radius: 16px;
+            padding: 12px;
+            margin-bottom: 12px;
         }
     </style>
 </head>
 
+<!-- Zentriert die Karte in der Mitte vom Bildschirm: -->
 <body class="pics-page d-flex justify-content-center align-items-center">
 
+<!-- ============================================================ -->
+<!-- KARTE: MY PICTURES -->
+<!-- ============================================================ -->
+
 <div class="wm-card shadow">
+
+    <!-- ============================================================ -->
+    <!-- TOP NAV: ZURUECK + TITEL + SCHLIESSEN -->
+    <!-- ============================================================ -->
+
     <div class="topnav">
+        <!-- Zurück-Button (Pfeil links): -->
         <button id="backBtn" class="nav-btn" title="Back">←</button>
+
+        <!-- Titel in der Mitte: -->
         <div class="text-center" style="font-weight:800;color:#ff4d6d;">My Pictures</div>
+
+        <!-- Schließen-Button (X rechts): -->
         <button id="closeBtn" class="nav-btn" title="Close">✕</button>
     </div>
 
+    <!-- ============================================================ -->
+    <!-- WARNUNG: MAN BRAUCHT MINDESTENS 1 BILD -->
+    <!-- ============================================================ -->
+
+    <!-- Dieser Text erscheint nur, wenn man zu wenig Bilder hat: -->
     <div id="warning" class="text-center small fw-bold text-danger mb-2" style="display:none;">
         You must have at least 1 picture to continue.
     </div>
 
+    <!-- ============================================================ -->
+    <!-- SLOT 1 – BILD 1 (PFLICHT) -->
+    <!-- ============================================================ -->
+
     <!-- Slot 1 -->
     <div class="slot">
+        <!-- Überschrift für Slot 1: -->
         <div class="small fw-bold mb-1">Picture 1 (required)</div>
+
+        <!-- Bild-Vorschau (wird per JS gesetzt): -->
         <img id="img1" class="pic" alt="Picture 1">
+
+        <!-- Datei-Auswahl für Bild 1: -->
         <div class="mb-2">
             <input id="file1" type="file" accept="image/*" class="form-control">
         </div>
+
+        <!-- Buttons für Bild 1: Speichern oder Löschen: -->
         <div class="d-flex gap-2">
+            <!-- Speichert das neue Bild 1: -->
             <button id="replace1" class="btn btn-danger w-100" style="border-radius:12px;">Save</button>
+            <!-- Löscht Bild 1 (wenn Backend es erlaubt): -->
             <button id="delete1" class="btn btn-outline-danger w-100" style="border-radius:12px;">Delete</button>
         </div>
     </div>
 
+    <!-- ============================================================ -->
+    <!-- SLOT 2 – BILD 2 (OPTIONAL) -->
+    <!-- ============================================================ -->
+
     <!-- Slot 2 -->
     <div class="slot">
+        <!-- Überschrift für Slot 2: -->
         <div class="small fw-bold mb-1">Picture 2 (optional)</div>
+
+        <!-- Bild-Vorschau (wird per JS gesetzt): -->
         <img id="img2" class="pic" alt="Picture 2">
+
+        <!-- Datei-Auswahl für Bild 2: -->
         <div class="mb-2">
             <input id="file2" type="file" accept="image/*" class="form-control">
         </div>
+
+        <!-- Buttons für Bild 2: Speichern oder Löschen: -->
         <div class="d-flex gap-2">
+            <!-- Speichert das neue Bild 2: -->
             <button id="replace2" class="btn btn-danger w-100" style="border-radius:12px;">Save</button>
+            <!-- Löscht Bild 2: -->
             <button id="delete2" class="btn btn-outline-danger w-100" style="border-radius:12px;">Delete</button>
         </div>
     </div>
 
+    <!-- ============================================================ -->
+    <!-- MELDUNGSFELD – FEHLER ODER INFO -->
+    <!-- ============================================================ -->
+
+    <!-- Hier zeigt das JS kurze Meldungen an (zB. „Saved“ oder „Failed“): -->
     <div id="msg" class="text-center small fw-bold text-danger"></div>
 </div>
 
+<!-- Lädt das JavaScript, das Bilder lädt, speichert und löscht: -->
 <script src="/js/manage-pictures.js"></script>
 </body>
 </html>

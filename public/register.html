@@ -1,55 +1,86 @@
+<!-- ============================================================ -->
+<!-- REGISTER SEITE – NEUES KONTO ERSTELLEN -->
+<!-- ============================================================ -->
+
 <!-- register.html: -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Setzt die Zeichencodierung, damit Sonderzeichen richtig angezeigt werden: -->
     <meta charset="UTF-8">
+
+    <!-- Setzt den Titel der Seite oben im Browser-Tab -->
     <title>Register – Wingmatch</title>
+
+    <!-- Macht die Seite auf Handys richtig skalierbar -->
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- Bootstrap 5 -->
+    <!-- Lädt Bootstrap für Layout, Formulare und Buttons: -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <style>
+        /* Setzt einen rosa Farbverlauf als Hintergrund: */
         body {
             background: linear-gradient(135deg, #ffdde1, #ee9ca7);
             height: 100vh;
         }
+
+        /* Rundet die Ecken der Karte ab: */
         .card {
             border-radius: 20px;
         }
+
+        /* Gestaltet den Wingmatch-Schriftzug oben: */
         .brand {
             font-weight: 700;
             font-size: 24px;
             color: #ff4d6d;
         }
+
+        /* Setzt die Hauptfarbe vom Button: */
         .btn-primary {
             background-color: #ff4d6d;
             border: none;
         }
+
+        /* Dunklere Farbe beim Hover: */
         .btn-primary:hover {
             background-color: #e63b5c;
         }
     </style>
 </head>
+
+<!-- Zentriert die Register-Karte in der Mitte vom Bildschirm: -->
 <body class="d-flex justify-content-center align-items-center">
 
-<div class="card shadow p-4" style="width: 380px;">
-    <div class="text-center mb-3">
-        <div class="brand">Wingmatch</div>
-        <h4>Create Account</h4>
+<!-- ============================================================ -->
+<!-- REGISTER KARTE -->
+<!-- ============================================================ -->
 
+<div class="card shadow p-4" style="width: 380px;">
+
+    <!-- Kopfbereich: Logo + Titel: -->
+    <div class="text-center mb-3">
+        <!-- Markenname: -->
+        <div class="brand">Wingmatch</div>
+        <!-- Überschrift der Seite: -->
+        <h4>Create Account</h4>
     </div>
 
+    <!-- Eingabefeld für den Namen: -->
     <div class="mb-2">
         <input id="name" class="form-control" placeholder="Name">
     </div>
 
+    <!-- Eingabefeld für das Alter (mindestens 18): -->
     <div class="mb-2">
         <input id="age" type="number" min="18" class="form-control" placeholder="Age">
     </div>
 
+    <!-- Auswahl für Geschlecht: -->
     <div class="mb-2">
         <select id="gender" class="form-select">
+            <!-- Platzhalter, damit man bewusst auswählen muss: -->
             <option value="placeholder" selected disabled>Choose gender</option>
             <option value="Female">Female</option>
             <option value="Male">Male</option>
@@ -58,9 +89,12 @@
         </select>
     </div>
 
+    <!-- Standort Eingabe (mit Vorschlagsliste): -->
     <div class="mb-2">
+        <!-- list="locations" verbindet das Feld mit dem datalist unten: -->
         <input id="location" class="form-control" list="locations" placeholder="Location">
 
+        <!-- Vorschläge für Standorte (man kann trotzdem frei tippen): -->
         <datalist id="locations">
             <option value="Vienna">
             <option value="Wiener Neustadt">
@@ -69,17 +103,19 @@
             <option value="Graz">
             <option value="Linz">
         </datalist>
-
     </div>
 
+    <!-- Eingabefeld für E-Mail: -->
     <div class="mb-2">
         <input id="email" type="email" class="form-control" placeholder="Email">
     </div>
 
+    <!-- Eingabefeld für Passwort: -->
     <div class="mb-3">
         <input id="password" type="password" class="form-control" placeholder="Password">
     </div>
 
+    <!-- Register Button: -->
     <div class="d-grid mb-2">
         <button
                 id="registerBtn"
@@ -87,15 +123,18 @@
                 class="btn btn-danger w-100">
             Register
         </button>
-
     </div>
+
+    <!-- Bereich für Fehlermeldungen (zB. Email schon vergeben): -->
     <div id="errorMsg" class="text-center text-danger small mb-2"></div>
 
+    <!-- Link zurück zur Login-Seite -->
     <div class="text-center">
         <a href="/login" class="text-decoration-none">Back to Login</a>
     </div>
 </div>
 
+<!-- Lädt das JavaScript, das die Registrierung ans Backend sendet: -->
 <script src="/js/register.js"></script>
 </body>
 </html>

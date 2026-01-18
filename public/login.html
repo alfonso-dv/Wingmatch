@@ -1,59 +1,91 @@
+<!-- ============================================================ -->
+<!-- LOGIN SEITE – ANMELDUNG BEI WINGMATCH -->
+<!-- ============================================================ -->
+
 <!-- login.html: -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Setzt die Zeichencodierung, damit Sonderzeichen richtig angezeigt werden: -->
     <meta charset="UTF-8">
+
+    <!-- Setzt den Titel der Seite oben im Browser-Tab: -->
     <title>Login – Wingmatch</title>
+
+    <!-- Macht die Seite auf Handys richtig skalierbar: -->
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- Bootstrap 5 -->
+    <!-- Lädt Bootstrap für das Layout und die Buttons: -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <style>
+        /* Stellt einen blauen Farbverlauf als Hintergrund ein: */
         body {
             background: linear-gradient(135deg, #e3f2fd, #bbdefb);
             height: 100vh;
         }
+
+        /* Rundet die Ecken der Login-Karte ab: */
         .card {
             border-radius: 20px;
         }
+
+        /* Gestaltet den Wingmatch-Schriftzug oben: */
         .brand {
             font-weight: 700;
             font-size: 24px;
             color: #2196f3;
         }
+
+        /* Setzt die Hauptfarbe des Login-Buttons: */
         .btn-primary {
             background-color: #2196f3;
             border: none;
         }
+
+        /* Dunklere Farbe, wenn man mit der Maus über den Button geht: */
         .btn-primary:hover {
             background-color: #1976d2;
         }
     </style>
 </head>
+
+<!-- Zentriert die Login-Karte vertikal und horizontal auf dem Bildschirm: -->
 <body class="d-flex justify-content-center align-items-center">
 
+<!-- ============================================================ -->
+<!-- LOGIN KARTE -->
+<!-- ============================================================ -->
+
 <div class="card shadow p-4" style="width: 380px;">
+
+    <!-- Kopfbereich der Karte (Logo + Titel): -->
     <div class="text-center mb-3">
+        <!-- Markenname oben: -->
         <div class="brand">Wingmatch</div>
+        <!-- Überschrift der Seite: -->
         <h4>Login</h4>
     </div>
 
+    <!-- Eingabefeld für die E-Mail-Adresse: -->
     <div class="mb-3">
         <input id="email" type="email" class="form-control" placeholder="Email">
     </div>
 
+    <!-- Eingabefeld für das Passwort: -->
     <div class="mb-3">
         <input id="password" type="password" class="form-control" placeholder="Password">
     </div>
 
-
+    <!-- Login-Button: -->
     <div class="d-grid mb-2">
         <button id="loginBtn" class="btn btn-primary">Login</button>
     </div>
 
+    <!-- Bereich für Fehlermeldungen (z. B. „falsches Passwort“): -->
     <div id="msg" class="text-center text-danger small mb-2"></div>
 
+    <!-- Link zur Registrierungsseite: -->
     <div class="text-center">
         <a href="/register" class="text-decoration-none">
             Create new account
@@ -61,6 +93,7 @@
     </div>
 </div>
 
+<!-- Lädt das JavaScript, das den Login an das Backend sendet: -->
 <script src="/js/login.js"></script>
 </body>
 </html>
