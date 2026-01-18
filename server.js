@@ -632,73 +632,81 @@ app.post("/api/profile", requireLogin, (req, res) => {
 app.get("/api/discover", requireLogin, (req, res) => {
     const me = req.session.userId;
 
-    db.all(
-        `
-            SELECT
-                u.id AS userId,
-                u.name,
-                u.age,
-                u.gender,
-                p.bio,
-                p.photos
-            FROM users u
-                     JOIN profiles p ON p.user_id = u.id
-            WHERE u.id != ?
-            
-      -- Hide my wingmen AND my best friends (any wingman link in either direction)
-      AND u.id NOT IN (
-        SELECT wingman_user_id FROM wingman_links WHERE user_id = ?
-        UNION
-        SELECT user_id FROM wingman_links WHERE wingman_user_id = ?
-      )
+    const sql = `
+    SELECT
+      u.id AS userId,
+      u.name,
+      u.age,
+      u.gender,
+      p.bio,
+      p.photos
+    FROM users u
+    JOIN profiles p ON p.user_id = u.id
+    WHERE u.id != ?
 
-      -- Hide people I already MATCHED with
-      AND u.id NOT IN (
-        SELECT CASE
-          WHEN user1_id = ? THEN user2_id
-          ELSE user1_id
-        END
-        FROM matches
-        WHERE user1_id = ? OR user2_id = ?
-      )
+    -- Hide my wingmen AND my best friends
+    AND u.id NOT IN (
+      SELECT wingman_user_id FROM wingman_links WHERE user_id = ?
+      UNION
+      SELECT user_id FROM wingman_links WHERE wingman_user_id = ?
+    )
 
-      -- Hide people I already LIKED/SUPER-LIKED (pending response)
-      AND u.id NOT IN (
-        SELECT to_user_id
-        FROM swipes
-        WHERE from_user_id = ?
-          AND action IN ('LIKE','SUPER')
-      )
+    -- Hide people I already MATCHED with
+    AND u.id NOT IN (
+      SELECT CASE
+        WHEN user1_id = ? THEN user2_id
+        ELSE user1_id
+      END
+      FROM matches
+      WHERE user1_id = ? OR user2_id = ?
+    )
 
-            ORDER BY p.updated_at DESC
-        `,
-        [me, me, me, me, me],
-        (err, rows) => {
-            if (err) {
-                console.error("DB ERROR:", err.message);
-                return res.status(500).json({ message: "DB error" });
-            }
+    -- Hide people I already LIKED/SUPER-LIKED (pending response)
+    AND u.id NOT IN (
+      SELECT to_user_id
+      FROM swipes
+      WHERE from_user_id = ?
+        AND action IN ('LIKE','SUPER')
+    )
 
-            const profiles = (rows || [])
-                .map((r) => {
-                    let photosArr = [];
-                    try { photosArr = JSON.parse(r.photos || "[]"); } catch { photosArr = []; }
-                    photosArr = photosArr.filter((x) => typeof x === "string" && x.trim().length > 0);
+    ORDER BY p.updated_at DESC
+  `;
 
-                    return {
-                        id: `u_${r.userId}`,
-                        name: r.name || "",
-                        age: r.age || "",
-                        gender: r.gender || "",
-                        bio: (r.bio || "").trim(),
-                        photos: photosArr,
-                    };
-                })
-                .filter((p) => p.photos.length >= 1);
+    const params = [
+        me, // u.id != ?
+        me, // wingmen user_id = ?
+        me, // bestFriends wingman_user_id = ?
+        me, // CASE WHEN user1_id = ?
+        me, // WHERE user1_id = ?
+        me, // OR user2_id = ?
+        me, // swipes from_user_id = ?
+    ];
 
-            res.json({ profiles });
+    db.all(sql, params, (err, rows) => {
+        if (err) {
+            console.error("DB ERROR:", err.message);
+            return res.status(500).json({ message: "DB error" });
         }
-    );
+
+        const profiles = (rows || [])
+            .map((r) => {
+                let photosArr = [];
+                try { photosArr = JSON.parse(r.photos || "[]"); } catch { photosArr = []; }
+                photosArr = photosArr.filter((x) => typeof x === "string" && x.trim().length > 0);
+
+                return {
+                    id: `u_${r.userId}`,
+                    name: r.name || "",
+                    age: r.age || "",
+                    gender: r.gender || "",
+                    bio: (r.bio || "").trim(),
+                    photos: photosArr,
+                };
+            })
+            .filter((p) => p.photos.length >= 1);
+
+        res.json({ profiles });
+    });
 });
 
 /* ================= DELETE ACCOUNT ================= */
