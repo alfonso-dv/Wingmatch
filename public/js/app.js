@@ -1510,6 +1510,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Versucht das Laden sicher abzufangen:
         try {
             // Holt die aktuellen Wingmen/BestFriends vom Backend:
+            // MUST-RQ 10: holt die Daten
             const res = await fetch("/api/wingmen");
             // Liest die Antwort als JSON:
             const data = await res.json();
@@ -1517,8 +1518,10 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!res.ok) return;
 
             // Holt Wingmen sicher als Array:
+            // MUST-RQ: 10
             const wingmen = Array.isArray(data.wingmen) ? data.wingmen : [];
             // Holt Best Friends sicher als Array:
+            // MUST-RQ 11: holt Bestfriends
             const bestFriends = Array.isArray(data.bestFriends) ? data.bestFriends : [];
 
 
@@ -1528,6 +1531,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // ============================================================
 
             // Baut Wingmen-Liste als HTML:
+            // Must-RQ 10: rendert Wingman links
             const wingmenHtml = wingmen.map(
                 (u) => `
     <li class="side-item">
@@ -1633,6 +1637,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // ============================================================
 
             // Setzt die Best-Friends-Liste:
+            // MUST-RQ 11: rendert die Liste rechts
             bestFriendsList.innerHTML = bestFriends.length
                 ? bestFriends
                     .map(

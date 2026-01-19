@@ -145,6 +145,7 @@ async function loadProfilePrompts() {
 // PROFILE VIEW – WINGMAN-KOMMENTARE LADEN UND ANZEIGEN
 // ============================================================
 
+// MUST-RQ 13: Kommentare laden
 async function loadProfileComments() {
     // Holt alle Kommentare zu diesem Profil vom Backend
     const res = await fetch(`/api/profile/${userId}/comments`);
@@ -193,6 +194,7 @@ async function loadProfileComments() {
 
         // Baut den Kommentar-Text als HTML hinein
         // escapeHtml macht den Text sicher, damit kein HTML eingeschleust wird
+        // MUST-RQ 14: c.canDelete --> Delete Button
         div.innerHTML = `
             <p>${escapeHtml(c.text)}</p>
             ${c.canDelete ? `<button class="delete-comment" data-id="${c.id}">Delete</button>` : ""}
@@ -211,6 +213,7 @@ async function loadProfileComments() {
         btn.addEventListener("click", async () => {
 
             // Schickt eine DELETE-Anfrage an das Backend mit der Kommentar-ID
+            // MUST RQ-14: Delete Request
             await fetch(`/api/profile/comments/${btn.dataset.id}`, {
                 method: "DELETE"
             });
@@ -228,6 +231,7 @@ async function loadProfileComments() {
 
 async function checkIfWingman() {
     // Fragt das Backend: ist der aktuelle User ein Wingman von diesem Profil?
+    // MUST-RQ 12
     const res = await fetch(`/api/profile/${userId}/is-wingman`);
 
     // Wenn die Anfrage fehlschlägt, sagt er “nein”
@@ -263,6 +267,7 @@ async function setupWingmanCommentBox() {
     }
 
     // Prüft, ob die Person ein Wingman ist
+    // MUST-RQ 12
     const isWingman = await checkIfWingman();
 
     // Wenn die Person kein Wingman ist, versteckt er die Box
@@ -289,6 +294,7 @@ async function setupWingmanCommentBox() {
             if (!text) return;
 
             // Schickt den Kommentar ans Backend, damit er gespeichert wird
+            // MUST-RQ 12: Kommmentar wird gepostet und gespeichert
             const res = await fetch(`/api/profile/${userId}/comments`, {
                 method: "POST", // sagt: „ich speichere einen Kommentar“
                 headers: { "Content-Type": "application/json" }, // sagt: „ich schicke JSON“
