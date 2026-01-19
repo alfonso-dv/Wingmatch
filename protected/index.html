@@ -1,8 +1,17 @@
 <!doctype html>
 <html lang="en">
 <head>
+    <!-- Gibt an, dass die Datei Zeichen wie Umlaute richtig versteht -->
     <meta charset="UTF-8" />
+    <!-- Macht die Seite auf Handy/Tablet gut lesbar (passt Breite und Zoom an) -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<!-- ============================================================ -->
+<!-- SICHERHEIT: CONTENT SECURITY POLICY (CSP) -->
+<!-- ============================================================ -->
+
+    <!-- Legt fest, von wo Inhalte geladen werden dürfen -->
+    <!-- Das schützt z.B. vor unsicheren Scripts von fremden Seiten -->
     <meta http-equiv="Content-Security-Policy"
           content="
           default-src 'self';
@@ -10,67 +19,113 @@
           style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
           script-src 'self';
         ">
-
+    <!-- Titel, der oben im Browser-Tab angezeigt wird -->
     <title>Wingmatch</title>
+    <!-- Lädt das eigene CSS-Design aus dem Ordner /css -->
     <link rel="stylesheet" href="/css/styles.css" />
 </head>
 
 <body>
 
-<!-- DESKTOP LAYOUT: left column | phone app | right list -->
+<!-- ============================================================ -->
+<!-- DESKTOP LAYOUT – GESAMTE SEITE IN DREI BEREICHE AUFGETEILT -->
+<!-- ============================================================ -->
+
+<!-- Umschließt das komplette Layout mit linker Spalte, App in der Mitte und rechter Liste -->
 <div class="desktop-layout">
 
-    <!-- LEFT COLUMN: Wingmen + Comments (stacked) -->
+    <!-- ============================================================ -->
+    <!-- LINKE SPALTE: WINGMEN + KOMMENTARE (ÜBEREINANDER) -->
+    <!-- ============================================================ -->
+
+    <!-- Linke Hauptspalte, die zwei Listen enthält (Wingmen + Kommentare) -->
     <div class="left-column">
 
-        <!-- LEFT LIST: Wingmen -->
+        <!-- ============================================================ -->
+        <!-- LINKE LISTE: MEINE WINGMEN -->
+        <!-- ============================================================ -->
+
+        <!-- Erster Kasten links: Liste meiner Wingmen -->
         <aside class="side-list left">
+
+            <!-- Kopfbereich der Wingmen-Liste -->
             <div class="side-header">
+
+                <!-- Titel der Liste -->
                 <h3>Wingmen</h3>
 
+                <!-- Bereich mit Buttons rechts oben im Header -->
                 <div class="side-header-actions">
+
+                    <!-- Button zum Hinzufügen eines neuen Wingmans -->
                     <button id="addWingmanBtn" class="mini-btn" title="Add Wingman">＋</button>
+
+                    <!-- Info-Button mit Tooltip -->
                     <button id="wingmenInfoBtn" class="info-btn" title="Info">ℹ️</button>
                 </div>
             </div>
 
+            <!-- Liste mit einzelnen Wingmen -->
             <ul class="side-items" id="wingmenList">
+
+                <!-- EINZELNER WINGMAN EINTRAG -->
                 <li class="side-item">
+
+                    <!-- Name des Wingmans -->
                     <div class="side-name">Alex</div>
+
+                    <!-- Status-Text unter dem Namen -->
                     <div class="side-sub">Online</div>
                 </li>
+
+                <!-- NÄCHSTER WINGMAN EINTRAG -->
                 <li class="side-item">
+
                     <div class="side-name">Sam</div>
                     <div class="side-sub">Last seen: 2h ago</div>
                 </li>
+
+                <!-- NÄCHSTER WINGMAN EINTRAG -->
                 <li class="side-item">
+
                     <div class="side-name">Jordan</div>
                     <div class="side-sub">New wingman</div>
                 </li>
             </ul>
         </aside>
 
-        <!-- LEFT LIST: What my wingmen say about me (directly under Wingmen) -->
+        <!-- ============================================================ -->
+        <!-- ZWEITE LISTE LINKS: WAS MEINE WINGMEN ÜBER MICH SAGEN -->
+        <!-- ============================================================ -->
+
+        <!-- Zweiter Kasten direkt unter der Wingmen-Liste -->
         <aside class="side-list left">
+
+            <!-- Kopfbereich der Kommentar-Liste -->
             <div class="side-header">
+
+                <!-- Titel über den Kommentaren -->
                 <h3>What my wingmen say about me:</h3>
             </div>
+
+            <!-- Leere Liste, die später per JavaScript mit Kommentaren gefüllt wird -->
             <ul class="side-items" id="myCommentsList"></ul>
         </aside>
 
     </div>
 
+
     <!-- ============================================================ -->
-    <!-- MITTLERE SPALTE: „PHONE APP“ (SWIPE-BEREICH)               -->
-    <!-- ============================================================ -->
+<!-- MITTLERE SPALTE: „PHONE APP“ (SWIPE-BEREICH)               -->
+<!-- ============================================================ -->
     <!-- Sieht aus wie ein Handy in der Mitte der Seite -->
     <!-- Hier passiert das eigentliche Swipen (Like/Nope/Super) -->
 
     <div class="app">
 
-        <!-- ============================================================ -->
-        <!-- OBERER BALKEN (TOPBAR) -->
-        <!-- ============================================================ -->
+<!-- ============================================================ -->
+<!-- OBERER BALKEN (TOPBAR) -->
+<!-- ============================================================ -->
         <!-- Enthält: Profil, Logo, Date Roulette, Settings, Messages, Logout -->
         <header class="topbar">
 
@@ -180,6 +235,7 @@
 <!-- ============================================================ -->
 <!-- DATE ROULETTE MODAL (POPUP) -->
 <!-- ============================================================ -->
+
 <!-- Erscheint, wenn man auf 🎲 klickt -->
 
 <div id="rouletteModal" class="modal hidden">
@@ -208,6 +264,7 @@
 <!-- ============================================================ -->
 <!-- ROULETTE SPIN MODAL (DREH-RAD ERGEBNIS)                     -->
 <!-- ============================================================ -->
+
 <!-- Wird geöffnet, nachdem man „Date Ideas“ oder „Food & Dining“ gewählt hat -->
 
 <div id="spinModal" class="modal hidden">
@@ -233,6 +290,7 @@
 <!-- ============================================================ -->
 <!-- SETTINGS MODAL (EINSTELLUNGEN)                              -->
 <!-- ============================================================ -->
+
 <!-- Öffnet sich über das ⚙️ Symbol oben -->
 
 <div id="settingsModal" class="modal hidden">
@@ -256,6 +314,7 @@
 <!-- ============================================================ -->
 <!-- INFO MODAL (ERKLÄRUNGEN FÜR WINGMEN / BEST FRIENDS)         -->
 <!-- ============================================================ -->
+
 <!-- Wird von ℹ️ Buttons bei Wingmen und Best Friends genutzt -->
 
 <div id="infoModal" class="modal hidden">
@@ -278,6 +337,7 @@
 <!-- ============================================================ -->
 <!-- ADD WINGMAN MODAL (WINGMAN HINZUFÜGEN)                      -->
 <!-- ============================================================ -->
+
 <!-- Öffnet sich über das „＋“ Symbol bei Wingmen -->
 
 <div id="addWingmanModal" class="modal hidden">
@@ -308,6 +368,7 @@
 <!-- ============================================================ -->
 <!-- MESSAGES / MATCHES MODAL (CHAT)                             -->
 <!-- ============================================================ -->
+
 <!-- Öffnet sich über das 💬 Symbol oben -->
 
 <div id="messagesModal" class="modal hidden">
