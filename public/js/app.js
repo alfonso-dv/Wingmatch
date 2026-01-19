@@ -167,6 +167,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // ============================================================
 
     // Zeigt eine kurze Meldung (Toast) unten/oben im UI an:
+    // SHOULD-RQ 26: Notification "Its a match"
     function showToast(text) {
         // Wenn das Toast-Element nicht existiert, macht es nichts:
         if (!toast) return;
@@ -555,7 +556,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 action === ACTION.SUPER ? "SUPER" : null;
 
                     if (!serverAction) return;
-
+                    // SHOULD RQ 26
                     const r = await sendSwipeToServer(profile, serverAction);
                     if (r?.matched) showToast("It's a match! ✨");
                 } catch {
@@ -654,6 +655,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // Versucht dann den Swipe ans Backend zu senden:
             try {
                 // Sendet „LIKE“ an den Server und wartet auf die Antwort:
+                // SHOULD RQ 26: Swipe wird gesendet
                 const r = await sendSwipeToServer(p, "LIKE");
                 // Wenn der Server sagt „matched“, zeigt es eine Match-Nachricht:
                 if (r?.matched) showToast("It's a match! ✨");

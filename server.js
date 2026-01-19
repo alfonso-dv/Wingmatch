@@ -1928,6 +1928,7 @@ app.delete("/api/bestfriends/:userId", requireLogin, (req, res) => {
 
 // Verarbeitet einen Swipe: LIKE, NOPE oder SUPER
 // Erstellt ein Match, wenn beide sich geliked haben
+// SHOULD-RQ 26: Endpoint
 app.post("/api/swipes", requireLogin, (req, res) => {
 
     // Holt meine User-ID aus der Session
