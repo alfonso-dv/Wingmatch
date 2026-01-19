@@ -1,4 +1,4 @@
-// app.js
+// app.js - Frontend
 
 // ============================================================
 // START – WARTET BIS DIE SEITE FERTIG GELADEN IST

@@ -169,6 +169,18 @@ async function prefillProfileForm() {
   // Wenn etwas schiefgeht, bricht er ab
   if (!res.ok) return;
 
+  if (promptAnswers.length > 0) {
+    const resPrompts = await fetch("/api/prompts/answers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(promptAnswers)
+    });
+
+    if (!resPrompts.ok) {
+      showError("Saving prompt answers failed.");
+      return;
+    }
+  }
   // Wandelt die Antwort in JSON um
   const d = await res.json();
 
@@ -523,6 +535,24 @@ form.onsubmit = async (e) => {
     showError("Please fill required fields correctly.");
     return;
   }
+
+  // ============================================================
+// PROMPT-ANTWORTEN AUS DEM FORMULAR SAMMELN
+// ============================================================
+
+  const promptAnswers = [];
+
+  document.querySelectorAll(".prompt-answer").forEach(t => {
+    const answer = t.value.trim();
+    const promptId = t.dataset.promptId;
+
+    if (answer && promptId) {
+      promptAnswers.push({
+        promptId: Number(promptId),
+        answer
+      });
+    }
+  });
 
   // Sendet das Profil an das Backend zum Speichern
   const res = await fetch("/api/profile", {

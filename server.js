@@ -109,7 +109,11 @@ db.serialize(() => {
       gender TEXT,
       location TEXT
     )
+    
   `);
+    addColumnSafe(`ALTER TABLE users ADD COLUMN reset_token TEXT`);
+    addColumnSafe(`ALTER TABLE users ADD COLUMN reset_expires INTEGER`);
+
 
     // ================= PROFILES TABELLE =================
     // Speichert zusätzliche Profil-Infos zu jedem User
@@ -2573,11 +2577,116 @@ app.delete("/api/me/comments/:commentId", requireLogin, (req, res) => {
         }
     );
 });
+const crypto = require("crypto");
+
+// ============================================================
+// FORGOT PASSWORD – CREATE RESET TOKEN
+// ============================================================
+
+app.post("/api/forgot-password", (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ message: "Email required" });
+    }
+
+    db.get("SELECT id FROM users WHERE email = ?", [email], (err, user) => {
+
+        // Always return same message (security)
+        if (!user) {
+            return res.json({
+                message: "If the email exists, a reset link was created."
+            });
+        }
+
+        const token = crypto.randomBytes(32).toString("hex");
+        const expires = Date.now() + 30 * 60 * 1000;
+
+        db.run(
+            `UPDATE users SET reset_token = ?, reset_expires = ? WHERE id = ?`,
+            [token, expires, user.id]
+        );
+
+        // DEMO: return link directly
+        res.json({
+            message: "Reset link created",
+            resetLink: `/reset-password?token=${token}`
+        });
+    });
+});
+
+// ============================================================
+// RESET PASSWORD – APPLY NEW PASSWORD
+// ============================================================
+
+app.post("/api/reset-password", async (req, res) => {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+        return res.status(400).json({ message: "Missing data" });
+    }
+
+    db.get(
+        `
+        SELECT id FROM users
+        WHERE reset_token = ?
+          AND reset_expires > ?
+        `,
+        [token, Date.now()],
+        async (err, user) => {
+
+            if (err) {
+                console.error("DB ERROR:", err.message);
+                return res.status(500).json({ message: "DB error" });
+            }
+
+            if (!user) {
+                return res.status(400).json({
+                    message: "Invalid or expired token"
+                });
+            }
+
+            // Hash new password
+            const hash = await bcrypt.hash(password, 10);
+
+            // Update password + remove token
+            db.run(
+                `
+                UPDATE users
+                SET password = ?, reset_token = NULL, reset_expires = NULL
+                WHERE id = ?
+                `,
+                [hash, user.id],
+                (err2) => {
+
+                    if (err2) {
+                        console.error("DB ERROR:", err2.message);
+                        return res.status(500).json({ message: "DB error" });
+                    }
+
+                    res.json({ message: "Password reset successful" });
+                }
+            );
+        }
+    );
+});
+
+
+app.get("/forgot-password", (req, res) => {
+    res.sendFile(__dirname + "/public/forgot-password.html");
+});
+
+app.get("/reset-password", (req, res) => {
+    res.sendFile(__dirname + "/public/reset-password.html");
+});
+
+
 
 
 // ============================================================
 // SERVER START (MUSS IMMER GANZ UNTEN STEHEN)
 // ============================================================
+
 
 /* ================= START (ALWAYS LAST) ================= */
 

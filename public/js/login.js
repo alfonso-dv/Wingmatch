@@ -80,6 +80,6 @@ document.getElementById("loginBtn").onclick = async () => {
             // Sonst geht er zur Homepage
             window.location.href = "/index";
         }
-    }, 700);
+    }, 700);//
 
 };
