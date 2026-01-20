@@ -438,12 +438,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const bioHtml = bioText ? `<div class="bio">${escapeHtml(bioText)}</div>` : "";
 
         // ============================================================
-        // ✅ WINGMAN KOMMENTARE (werden vom Server als profile.wingmanComments geliefert)
+        // WINGMAN KOMMENTARE (werden vom Server als profile.wingmanComments geliefert)
         // ============================================================
 
         const wingmanComments = Array.isArray(profile.wingmanComments) ? profile.wingmanComments : [];
 
-        // optional: nur die letzten 3 anzeigen
+        // nur die letzten 3 anzeigen
         const limitedComments = wingmanComments.slice(0, 3);
 
         const commentsHtml = limitedComments.length
