@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ============================================================
     // WINGMAN REQUESTS – PRÜFT OB JEMAND DICH ALS WINGMAN WILL
     // ============================================================
-
+//must 7
     // fragt den Server: gibt es offene Wingman-Anfragen für den eingeloggten User?
     fetch("/api/wingman/requests/pending")
         .then(res => res.json()) // macht aus der Server-Antwort ein JSON-Objekt
@@ -23,6 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 overlay.className = "popup-overlay";
 
                 // füllt das Overlay mit HTML: Text + Accept + Deny
+        //must 8
                 overlay.innerHTML = `
     <div class="popup">
         <p><b>${r.requesterName}</b> is asking you to be their Wingman</p>
@@ -1764,6 +1765,8 @@ document.addEventListener("DOMContentLoaded", () => {
 // ============================================================
 // WINGMAN HINZUFUEGEN – FENSTER (MODAL) + SUCHE + REQUEST SENDEN
 // ============================================================
+// Must 6
+//Hier werden Suchergebnisse angezeigt. Für jeden gefundenen User wird ein Name mit einem „Add“-Button angezeigt:
 
 // Holt den Button „Add Wingman“:
     const addWingmanBtn = document.getElementById("addWingmanBtn");
