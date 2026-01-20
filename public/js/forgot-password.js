@@ -65,7 +65,7 @@ resetBtn.addEventListener("click", async () => {
         }
 
         // Erfolgsnachricht (gleiche Meldung für alle → Sicherheit)
-        msg.textContent = "Klick below to reset your password if the email is registered.";
+        msg.textContent = "Klick below to reset your password.";
         msg.className = "text-center text-success small mb-2";
 
         // ============================================================
