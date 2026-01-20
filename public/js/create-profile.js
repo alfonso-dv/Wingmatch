@@ -163,51 +163,30 @@ function showSuccess(msg) {
 
 // Lädt die Profil-Daten vom Server und setzt sie in die Felder im Formular
 async function prefillProfileForm() {
-  // Fragt das Profil vom Backend ab (API-Endpunkt)
   const res = await fetch("/api/profile");
-
-  // Wenn etwas schiefgeht, bricht er ab
   if (!res.ok) return;
 
-  if (promptAnswers.length > 0) {
-    const resPrompts = await fetch("/api/prompts/answers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(promptAnswers)
-    });
-
-    if (!resPrompts.ok) {
-      showError("Saving prompt answers failed.");
-      return;
-    }
-  }
-  // Wandelt die Antwort in JSON um
   const d = await res.json();
 
-  // Setzt die normalen Profil-Felder (oder leer, wenn nichts da ist)
   document.getElementById("name").value = d.name || "";
   document.getElementById("age").value = d.age || "";
+  document.getElementById("gender").value = d.gender || "";
   document.getElementById("location").value = d.location || "";
   document.getElementById("bio").value = d.bio || "";
   document.getElementById("hobbies").value = d.hobbies || "";
 
-  // Setzt das Dropdown/Feld für Gender
-  document.getElementById("gender").value = d.gender || "";
-
-  // Setzt die neuen optionalen Felder (Sternzeichen, Suche, Extra)
   document.getElementById("zodiac").value = d.zodiac || "";
   document.getElementById("lookingFor").value = d.lookingFor || "";
   document.getElementById("extra").value = d.extra || "";
 
-  // Setzt Discovery-Einstellungen (Interesse + Altersbereich)
   document.getElementById("interestedIn").value = d.interestedIn || "";
   document.getElementById("prefAgeMin").value = d.prefAgeMin ?? 18;
   document.getElementById("prefAgeMax").value = d.prefAgeMax ?? 100;
 
-  // Setzt das Text-Label für den Bereich (damit es sofort passt)
-  const label = document.getElementById("ageRangeLabel");
-  if (label) label.textContent = `${d.prefAgeMin ?? 18} - ${d.prefAgeMax ?? 100}`;
+  document.getElementById("ageRangeLabel").textContent =
+      `${d.prefAgeMin ?? 18} - ${d.prefAgeMax ?? 100}`;
 }
+
 
 // ============================================================
 // CREATE PROFILE – PROMPTS LADEN (NUR UI)
