@@ -600,7 +600,7 @@ app.post("/api/wingman/request", requireLogin, (req, res) => {
 // ============================================================
 // WINGMAN ANFRAGEN – ABRUF (PENDING)
 // ============================================================
-
+// Must 7
 // Gibt alle offenen (PENDING) Wingman-Anfragen zurück,
 // die ANDERE User an MICH geschickt haben
 app.get("/api/wingman/requests/pending", requireLogin, (req, res) => {
@@ -737,7 +737,7 @@ app.post("/api/profile/skip", requireLogin, (req, res) => {
 // ============================================================
 // WINGMAN ANFRAGE BEANTWORTEN (ACCEPT / DECLINE)
 // ============================================================
-
+//Must 8
 // Nimmt eine Wingman-Anfrage an oder lehnt sie ab
 app.post("/api/wingman/respond", requireLogin, (req, res) => {
 
@@ -1043,7 +1043,7 @@ app.get("/api/discover", requireLogin, (req, res) => {
             JOIN profiles p ON p.user_id = u.id
             WHERE u.id != ?
 
-            -- Hide my wingmen AND my best friends (any wingman link in either direction)
+            -- Hide my wingmen AND my best friends (any wingman link in either direction) Must 9
             AND u.id NOT IN (
                 SELECT wingman_user_id FROM wingman_links WHERE user_id = ?
                 UNION
@@ -1750,6 +1750,7 @@ app.post("/api/wingmen", requireLogin, (req, res) => {
         return res.status(400).json({ message: "You cannot add yourself as wingman" });
     }
 
+//Must 6
     // 1) Zählt, wie viele Wingmen ich bereits habe (maximal 5 erlaubt)
     db.get(
         `SELECT COUNT(*) AS cnt
