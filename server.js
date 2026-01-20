@@ -1029,7 +1029,7 @@ app.get("/api/discover", requireLogin, (req, res) => {
     // Holt meine eigene User-ID aus der Session
     const me = req.session.userId;
 
-    // Fragt passende Profile aus der Datenbank ab
+    // MUST RQ 15 + 16: Fragt passende Profile aus der Datenbank ab
     db.all(
         `
             SELECT
@@ -1375,6 +1375,7 @@ app.post("/api/photos/second", requireLogin, upload.single("photo"), (req, res) 
 // ============================================================
 
 // Prüft, ob eine bestimmte Person mein Wingman ist
+// MUST-RQ 12: Wingmen-Check
 app.get("/api/profile/:userId/is-wingman", requireLogin, (req, res) => {
 
     // Holt meine eigene User-ID aus der Session
@@ -1673,6 +1674,8 @@ app.get("/api/users/search", requireLogin, (req, res) => {
 
 
 // Lädt meine Wingmen UND meine Best Friends
+// MUST-RQ 10: Endpoint der wingmen liefert.
+// MUST-RQ 11: Endpoint der Bestfriend liefert.
 app.get("/api/wingmen", requireLogin, (req, res) => {
 
     // Holt meine User-ID aus der Session
@@ -1715,6 +1718,7 @@ app.get("/api/wingmen", requireLogin, (req, res) => {
             }
 
             // Schickt beide Listen zusammen zurück
+            // MUST-RQ 11:
             res.json({
                 wingmen: wingmen || [],
                 bestFriends: bestFriends || [],
@@ -1924,6 +1928,7 @@ app.delete("/api/bestfriends/:userId", requireLogin, (req, res) => {
 
 // Verarbeitet einen Swipe: LIKE, NOPE oder SUPER
 // Erstellt ein Match, wenn beide sich geliked haben
+// MUST-RQ 7 + SHOULD-RQ 26: Endpoint
 app.post("/api/swipes", requireLogin, (req, res) => {
 
     // Holt meine User-ID aus der Session
@@ -2064,7 +2069,7 @@ app.post("/api/swipes", requireLogin, (req, res) => {
 });
 
 // ============================================================
-// MATCHES LISTE (MEINE MATCHES ANZEIGEN)
+// MATCHES LISTE (MEINE MATCHES ANZEIGEN) MUST RQ 19
 // ============================================================
 
 // Lädt meine gesamte Match-Liste
@@ -2192,7 +2197,7 @@ app.delete("/api/matches/:otherId", requireLogin, (req, res) => {
 
 
 // ============================================================
-// CHAT API (NUR FÜR MATCHES)
+// CHAT API (NUR FÜR MATCHES) MUST RQ 18
 // ============================================================
 
 // Hilfsfunktion: prüft, ob ich Teil dieses Matches bin
@@ -2349,7 +2354,8 @@ app.get("/api/profile/:userId/comments", requireLogin, (req, res) => {
 });
 
 
-// Fügt einen neuen Kommentar zu einem Profil hinzu
+// Fügt einen neuen Kommentar zu einem Profil hinzufügen
+// MUST-RQ 12: Kommentar wird angelegt
 app.post("/api/profile/:userId/comments", requireLogin, (req, res) => {
 
     // Holt meine eigene User-ID aus der Session
@@ -2507,6 +2513,7 @@ app.get("/api/profile/:userId/prompts", requireLogin, (req, res) => {
 
 
 // Lädt ALLE Kommentare, die auf MEINEM Profil stehen
+// MUST-RQ 13: lädt all Kommentae
 app.get("/api/me/comments", requireLogin, (req, res) => {
 
     // Holt meine eigene User-ID aus der Session
@@ -2542,6 +2549,7 @@ app.get("/api/me/comments", requireLogin, (req, res) => {
 
 
 // Löscht EINEN Kommentar von MEINEM Profil
+// MUST-RQ 14: Kommentar wird gelöscht
 app.delete("/api/me/comments/:commentId", requireLogin, (req, res) => {
 
     // Holt meine eigene User-ID aus der Session

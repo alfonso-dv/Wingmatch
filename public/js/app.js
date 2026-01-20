@@ -167,6 +167,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // ============================================================
 
     // Zeigt eine kurze Meldung (Toast) unten/oben im UI an:
+    // SHOULD-RQ 26: Notification "Its a match"
     function showToast(text) {
         // Wenn das Toast-Element nicht existiert, macht es nichts:
         if (!toast) return;
@@ -211,8 +212,8 @@ document.addEventListener("DOMContentLoaded", () => {
 // =========================
 // Preferences filtering
 // =========================
-
 // Lädt die eigenen „Discovery“-Einstellungen (Interesse + Altersbereich) vom Backend:
+    // MUST RQ 6
     async function loadMyPreferences() {
         // Versucht alles sicher abzufangen, damit die Seite auch bei Fehlern weiterläuft:
         try {
@@ -555,7 +556,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 action === ACTION.SUPER ? "SUPER" : null;
 
                     if (!serverAction) return;
-
+                    // MUST RQ 17+18 + SHOULD RQ 26
                     const r = await sendSwipeToServer(profile, serverAction);
                     if (r?.matched) showToast("It's a match! ✨");
                 } catch {
@@ -654,6 +655,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // Versucht dann den Swipe ans Backend zu senden:
             try {
                 // Sendet „LIKE“ an den Server und wartet auf die Antwort:
+                // SHOULD RQ 26: Swipe wird gesendet
                 const r = await sendSwipeToServer(p, "LIKE");
                 // Wenn der Server sagt „matched“, zeigt es eine Match-Nachricht:
                 if (r?.matched) showToast("It's a match! ✨");
@@ -1510,6 +1512,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Versucht das Laden sicher abzufangen:
         try {
             // Holt die aktuellen Wingmen/BestFriends vom Backend:
+            // MUST-RQ 10: holt die Daten
             const res = await fetch("/api/wingmen");
             // Liest die Antwort als JSON:
             const data = await res.json();
@@ -1517,8 +1520,10 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!res.ok) return;
 
             // Holt Wingmen sicher als Array:
+            // MUST-RQ: 10
             const wingmen = Array.isArray(data.wingmen) ? data.wingmen : [];
             // Holt Best Friends sicher als Array:
+            // MUST-RQ 11: holt Bestfriends
             const bestFriends = Array.isArray(data.bestFriends) ? data.bestFriends : [];
 
 
@@ -1528,6 +1533,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // ============================================================
 
             // Baut Wingmen-Liste als HTML:
+            // Must-RQ 10: rendert Wingman links
             const wingmenHtml = wingmen.map(
                 (u) => `
     <li class="side-item">
@@ -1633,6 +1639,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // ============================================================
 
             // Setzt die Best-Friends-Liste:
+            // MUST-RQ 11: rendert die Liste rechts
             bestFriendsList.innerHTML = bestFriends.length
                 ? bestFriends
                     .map(
