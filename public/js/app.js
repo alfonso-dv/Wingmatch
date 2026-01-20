@@ -212,8 +212,8 @@ document.addEventListener("DOMContentLoaded", () => {
 // =========================
 // Preferences filtering
 // =========================
-
 // Lädt die eigenen „Discovery“-Einstellungen (Interesse + Altersbereich) vom Backend:
+    // MUST RQ 6
     async function loadMyPreferences() {
         // Versucht alles sicher abzufangen, damit die Seite auch bei Fehlern weiterläuft:
         try {
@@ -556,7 +556,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 action === ACTION.SUPER ? "SUPER" : null;
 
                     if (!serverAction) return;
-                    // SHOULD RQ 26
+                    // MUST RQ 17+18 + SHOULD RQ 26
                     const r = await sendSwipeToServer(profile, serverAction);
                     if (r?.matched) showToast("It's a match! ✨");
                 } catch {

@@ -1029,7 +1029,7 @@ app.get("/api/discover", requireLogin, (req, res) => {
     // Holt meine eigene User-ID aus der Session
     const me = req.session.userId;
 
-    // Fragt passende Profile aus der Datenbank ab
+    // MUST RQ 15 + 16: Fragt passende Profile aus der Datenbank ab
     db.all(
         `
             SELECT
@@ -1928,7 +1928,7 @@ app.delete("/api/bestfriends/:userId", requireLogin, (req, res) => {
 
 // Verarbeitet einen Swipe: LIKE, NOPE oder SUPER
 // Erstellt ein Match, wenn beide sich geliked haben
-// SHOULD-RQ 26: Endpoint
+// MUST-RQ 7 + SHOULD-RQ 26: Endpoint
 app.post("/api/swipes", requireLogin, (req, res) => {
 
     // Holt meine User-ID aus der Session
@@ -2069,7 +2069,7 @@ app.post("/api/swipes", requireLogin, (req, res) => {
 });
 
 // ============================================================
-// MATCHES LISTE (MEINE MATCHES ANZEIGEN)
+// MATCHES LISTE (MEINE MATCHES ANZEIGEN) MUST RQ 19
 // ============================================================
 
 // Lädt meine gesamte Match-Liste
@@ -2197,7 +2197,7 @@ app.delete("/api/matches/:otherId", requireLogin, (req, res) => {
 
 
 // ============================================================
-// CHAT API (NUR FÜR MATCHES)
+// CHAT API (NUR FÜR MATCHES) MUST RQ 18
 // ============================================================
 
 // Hilfsfunktion: prüft, ob ich Teil dieses Matches bin
